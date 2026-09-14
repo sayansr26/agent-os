@@ -61,14 +61,18 @@ that ignores them misses the failures that are hardest to notice.
    otherwise. Anything the user treats as a hard rule belongs in `permissions.deny`
    as well, e.g. `"deny": ["Bash(git:*)"]`. Report the gap; the user decides.
 
-   Recommend the **broad** form, not a per-subcommand list. Matching is literal on
-   the words before the first `*`, so `Bash(git commit *)` misses
-   `git -C . commit`, `git -c user.name=x commit`, and `git 'commit'`. A granular
-   list reads safer than it is, and deny cannot carry allow exceptions — deny is
-   evaluated first and always wins — so you cannot carve `git status` back out of
-   a broad rule. If the user wants read-only git preserved, tell them what the
-   broad rule actually costs: with the session-resume hook installed, branch,
-   recent commits and dirty files already arrive at startup without a git call.
+   The default recommendation is to block git **writes** while keeping read-only
+   git usable — `references/git-permissions.md` has the rule set, ready to paste.
+   Do not hand the user a bare per-subcommand list: matching is literal on the
+   words before the first `*`, so `Bash(git commit *)` misses `git -C . commit`
+   and `git -c user.name=x commit`. The reference set denies those flag forms
+   too, which is what makes the rest of it hold.
+
+   Say plainly what it still does not stop: quoting (`git 'commit'`) defeats
+   literal matching and cannot be enumerated. If the user wants a hard boundary
+   rather than a strong default, the options are `"deny": ["Bash(git:*)"]` or a
+   `PreToolUse` hook — both cost them read-only git, and deny cannot carry allow
+   exceptions, so a broad rule cannot be carved back open.
    Note that a project can set its own `deny` — check whether this one does, and
    whether the protection therefore disappears in their *other* projects.
 10. **The personal layer.** Does `~/.claude/CLAUDE.md` exist? A project CLAUDE.md

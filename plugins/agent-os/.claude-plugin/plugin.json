@@ -1,7 +1,7 @@
 {
   "name": "agent-os",
   "description": "A context-engineered agent system for Claude Code. Ships a durable per-project memory layer, a cartographer that maps your codebase once and remembers it, and a coordinated agent set that reads your project's rules rather than hardcoding them.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": {
     "name": "Sayan Choudhury",
     "email": "sayan.choudhury.in@gmail.com"
