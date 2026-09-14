@@ -25,7 +25,10 @@ Then, in any project:
 ```
 
 It audits what the project already has, shows you the numbers before touching
-anything, and builds the rest.
+anything, and builds the rest. It also checks the layer around the project —
+user-scope agents shadowing plugin ones, the same hook registered twice, and
+whether your permission settings actually enforce the rules your CLAUDE.md
+merely states.
 
 ## What you get
 
@@ -75,6 +78,10 @@ if you never install this.
    knowledge into every other repo you open.
 6. **An honest "I could not verify this" beats a confident summary.** Every agent
    here is told to separate what it ran from what it assumed.
+7. **A CLAUDE.md rule is context, not enforcement.** "Never run git on your own
+   initiative" holds until a model decides otherwise. If you would be upset when
+   it is broken, it belongs in `permissions.deny` or a `PreToolUse` hook as well —
+   write it in both places, and let the instruction explain what the guard blocks.
 
 ## Requirements
 

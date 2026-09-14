@@ -24,7 +24,9 @@ a memory-bank read at every startup, a rules file with no `paths:` — is the bu
 
 ## Step 1 — Audit before changing anything
 
-Report these, with numbers, before you touch a file:
+Report these, with numbers, before you touch a file.
+
+### The project
 
 1. `wc -l CLAUDE.md` and every other always-loaded file. Over 200 lines is over budget.
 2. `ls .claude/rules/` — do the files exist, and does **every one** have `paths:`
@@ -35,11 +37,42 @@ Report these, with numbers, before you touch a file:
    `.windsurfrules`, `docs/architecture.md`-style handbooks, a knowledge-graph MCP
    in `.mcp.json`. Note what each holds.
 5. Every hook command in `.claude/settings.json` — does the file it points at
-   still exist? A dangling hook fires `node` at a missing path every session.
+   still exist? A dangling hook fires a command at a missing path every session,
+   silently, forever. Check this even when nothing looks wrong.
 6. Whether auto memory is on, and whether `MEMORY.md` exists and is under 200 lines.
+
+### The machine
+
+These are outside the project but they change how it behaves, and a project audit
+that ignores them misses the failures that are hardest to notice.
+
+7. **Shadowing.** Does `~/.claude/agents/` or `~/.claude/skills/` contain
+   something with the same name as a plugin component? User-scope definitions
+   **override** same-named plugin agents, so plugin updates silently stop
+   arriving. A standalone copy installed before the plugin is the usual cause.
+   Same question for `.claude/agents/` in this project.
+8. **Duplicate hooks.** Is the same script registered both in
+   `~/.claude/settings.json` and by a plugin? Symptom: the session-start block
+   prints twice. Compare the two hook lists, do not assume.
+9. **Permissions posture.** Read `permissions` in `~/.claude/settings.json`.
+   If `defaultMode` is `"auto"` (or anything that auto-approves) check what is in
+   `deny`. Instructions in a CLAUDE.md are context, not enforcement — a rule like
+   "never run git on your own initiative" holds only until a model decides
+   otherwise. Anything the user treats as a hard rule belongs in `permissions.deny`
+   as well, e.g. `"deny": ["Bash(git:*)"]`. Report the gap; the user decides.
+   Note that a project can set its own `deny` — check whether this one does, and
+   whether the protection therefore disappears in their *other* projects.
+10. **The personal layer.** Does `~/.claude/CLAUDE.md` exist? A project CLAUDE.md
+    that says "my working agreement applies here" while no such file exists is a
+    dangling reference. Conversely, preferences repeated in every project
+    CLAUDE.md belong there once instead.
 
 Show the audit to the user and say what you propose to move where. **Do not
 restructure a repo you have only just opened without showing this first.**
+
+Findings 7–10 are almost always the user's to fix: a plugin cannot write
+`~/.claude/CLAUDE.md` or `~/.claude/settings.json` permissions. Hand over the
+exact change rather than attempting it.
 
 ## Step 2 — Preserve before you delete
 
