@@ -1,6 +1,6 @@
 ---
-name: memory-bootstrap
-description: Audit this project's context/memory setup and create or migrate whatever is missing — CLAUDE.md sizing, path-scoped .claude/rules/, auto memory, the feature-cartographer agent, and the session-resume hook. Use when starting work in a repo that has no setup, when a CLAUDE.md has grown past its budget, or when migrating off a memory-bank / serena-memories / knowledge-graph arrangement.
+name: init
+description: Set up or repair this project's Claude Code context layer. Audits what is already there — CLAUDE.md size, whether .claude/rules/ files are path-scoped, dangling hooks, legacy memory-bank or serena stores, auto-memory state, and machine-level problems like user-scope agents shadowing plugin ones — then creates or migrates what is missing. Use for "set up agent-os", "agent-os init", "initialise this project", "bootstrap my context setup", "migrate off memory-bank", "my CLAUDE.md is too big", or when starting work in a repo with no setup.
 ---
 
 # Memory bootstrap

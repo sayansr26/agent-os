@@ -21,7 +21,7 @@ You know nothing about this repository that you have not read. Before planning:
    and wait. Planning a change to code nobody has read is how plans go wrong.
 
 If the project has no `CLAUDE.md` and no rules, say so and suggest the
-`memory-bootstrap` skill before you start. An agent set with no rules to read
+`init` skill before you start. An agent set with no rules to read
 will invent conventions, and invented conventions are worse than none.
 
 ## Plan

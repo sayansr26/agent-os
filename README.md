@@ -21,7 +21,7 @@ different acts.** Store as much as you like. Load almost none of it.
 Then, in any project:
 
 ```
-/agent-os:memory-bootstrap
+/agent-os:init
 ```
 
 It audits what the project already has, shows you the numbers before touching
