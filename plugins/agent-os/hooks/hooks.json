@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-resume.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Loading where you left off"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "sayan-plugins",
+  "owner": {
+    "name": "Sayan Choudhury",
+    "email": "sayan.choudhury.in@gmail.com"
+  },
+  "metadata": {
+    "description": "Context engineering and agent tooling for Claude Code.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "agent-os",
+      "source": "./plugins/agent-os",
+      "description": "A context-engineered agent system for Claude Code: a durable per-project memory layer, a codebase cartographer that remembers what it mapped, and a coordinated agent set that reads your project's rules instead of hardcoding them.",
+      "category": "workflow",
+      "keywords": [
+        "context-engineering",
+        "memory",
+        "agents",
+        "subagents",
+        "orchestration",
+        "codebase-navigation"
+      ]
+    }
+  ]
+}
