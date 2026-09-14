@@ -60,6 +60,15 @@ that ignores them misses the failures that are hardest to notice.
    "never run git on your own initiative" holds only until a model decides
    otherwise. Anything the user treats as a hard rule belongs in `permissions.deny`
    as well, e.g. `"deny": ["Bash(git:*)"]`. Report the gap; the user decides.
+
+   Recommend the **broad** form, not a per-subcommand list. Matching is literal on
+   the words before the first `*`, so `Bash(git commit *)` misses
+   `git -C . commit`, `git -c user.name=x commit`, and `git 'commit'`. A granular
+   list reads safer than it is, and deny cannot carry allow exceptions — deny is
+   evaluated first and always wins — so you cannot carve `git status` back out of
+   a broad rule. If the user wants read-only git preserved, tell them what the
+   broad rule actually costs: with the session-resume hook installed, branch,
+   recent commits and dirty files already arrive at startup without a git call.
    Note that a project can set its own `deny` — check whether this one does, and
    whether the protection therefore disappears in their *other* projects.
 10. **The personal layer.** Does `~/.claude/CLAUDE.md` exist? A project CLAUDE.md
