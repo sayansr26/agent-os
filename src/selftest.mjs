@@ -77,7 +77,7 @@ try {
     writeFileSync(join(r2, ".claude/rules/theming.md"),
       '---\ndescription: Theming\npaths:\n  - "src/**/*.tsx"\n---\n\nUse the token set.\n');
 
-    const i = cli(["init"], r2);
+    const i = cli(["init", "--no-plugin"], r2);
     ok(i.status === 0, "init exits 0 on a project that already has rules");
     ok(readFileSync(join(r2, "AGENTS.md"), "utf8") === realAgents ||
        readFileSync(join(r2, ".agent-os/AGENTS.md"), "utf8") === realAgents,
@@ -85,6 +85,16 @@ try {
     ok(existsSync(join(r2, ".agent-os/rules/theming.md")), "existing .claude/rules/ are adopted");
     ok(!existsSync(join(r2, ".agent-os/rules/example.md")), "no example.md when real rules were adopted");
     ok(!existsSync(join(r2, ".claude/rules/example.md")), "no example.md compiled into the project");
+    ok(!i.stdout.includes("Claude Code plugin"), "--no-plugin skips the plugin install");
+
+    // init offers the plugin when not told otherwise; --dry-run proves the
+    // commands without running them against the machine's real config.
+    const r4 = mkdtempSync(join(tmpdir(), "agent-os-plug-"));
+    const pi = cli(["init", "--dry-run"], r4);
+    ok(pi.stdout.includes("Claude Code plugin"), "init sets up the Claude Code plugin by default");
+    ok(/marketplace add sayansr26\/agent-os|plugin marketplace add|not on PATH/.test(pi.stdout),
+       "init names the marketplace step or says why it could not run it");
+    rmSync(r4, { recursive: true, force: true });
 
     // A hand-written file at a generated path must survive a sync.
     const r3 = mkdtempSync(join(tmpdir(), "agent-os-guard-"));

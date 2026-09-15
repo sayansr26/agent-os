@@ -76,6 +76,13 @@ Every command below is `npx @sayansr26/agent-os <command>`. Install it once —
 
 `--root <dir>` to target another directory, `--dry-run` to preview.
 
+**`init` sets up Claude Code completely.** When it detects Claude Code it also
+installs the plugin — the agents, skills, per-agent memory and session hook —
+with `claude plugin marketplace add` and `claude plugin install --yes` at
+project scope, so it travels with the repo. `--no-plugin` skips it. Every other
+detected tool gets its rules in its own schema; the plugin layer is Claude Code
+only because no other tool has anywhere to put it.
+
 **On an existing project, `init` adopts rather than scaffolds.** It takes your
 current `AGENTS.md` and the first rules directory it recognises as the source,
 so the first `sync` regenerates what you already had. **`sync` never overwrites
