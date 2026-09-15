@@ -1,0 +1,54 @@
+name: Feature request
+description: Suggest a change or addition
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bar for anything that loads on every turn is high — agent
+        descriptions and `CLAUDE.md`-tier content are paid for by every user in
+        every project. Proposals that keep cost at zero until needed are much
+        easier to accept.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that is awkward or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where would this live
+      options:
+        - A new agent
+        - A change to an existing agent
+        - A new skill
+        - A change to the init skill or its references
+        - The audit script
+        - A hook
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: Context cost
+      description: >
+        Would this add anything that loads on every turn — an agent description,
+        content in a skill body, hook output? If so, roughly how much, and could
+        it be deferred into a reference or a script instead?
+    validations:
+      required: false
