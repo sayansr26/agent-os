@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { detect, summarise, TOOLS } from "./detect.mjs";
 import { load, write, readIfExists, matches, BANNER, DIR } from "./source.mjs";
 import { adopt } from "./adopt.mjs";
+import { installPlugin, MARKETPLACE, MARKETPLACE_NAME, PLUGIN } from "./plugin.mjs";
 import { compile, TARGETS } from "./targets.mjs";
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
@@ -27,6 +28,7 @@ Options
   --root <dir>   project directory (default: cwd)
   --dry-run      print what would change, write nothing
   --force        overwrite files agent-os did not generate (it refuses by default)
+  --no-plugin    skip installing the Claude Code plugin during init
 `;
 
 function scaffold(root, found) {
@@ -203,7 +205,25 @@ Pick one:
       return;
     }
 
-    console.log(`\n${dim("Generated files carry a banner. Edit .agent-os/ and re-run sync; never edit them directly.")}\n`);
+    console.log(`\n${dim("Generated files carry a banner. Edit .agent-os/ and re-run sync; never edit them directly.")}`);
+
+    // The rules are done and safe at this point. The Claude Code plugin is the
+    // other half — agents, skills, per-agent memory, the session hook — and it
+    // installs from the same repo. Only on `init`, never on `sync`.
+    if (cmd === "init" && targets.includes("claude-code") && !argv.includes("--no-plugin")) {
+      console.log(`\n${bold("Claude Code plugin")} ${dim(`${PLUGIN}@${MARKETPLACE_NAME}`)}\n`);
+      const r = installPlugin({ dry });
+      for (const line of r.done) console.log(`  ${dim(line)}`);
+      if (r.ok && r.reason === "installed") {
+        console.log(`\n  installed at project scope ${dim("— .claude/settings.json, so it travels with the repo")}`);
+        console.log(`  ${dim("restart Claude Code, or /reload-plugins, then run /agent-os:init")}`);
+      } else if (!r.ok) {
+        console.log("");
+        for (const line of r.hint) console.log(`  ${line}`);
+      }
+      console.log(`\n  ${dim("--no-plugin skips this")}`);
+    }
+    console.log("");
     return;
   }
 

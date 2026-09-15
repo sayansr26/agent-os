@@ -5,6 +5,34 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] — 2026-09-15
+
+Found by running 0.5.0 against a real repository that already had six
+path-scoped rules and a hand-written `AGENTS.md`. It overwrote the
+`AGENTS.md`. 0.5.0 was never published.
+
+### Added
+- **`init` installs the Claude Code plugin.** When Claude Code is detected it
+  runs `claude plugin marketplace add` and `claude plugin install --yes` at
+  project scope, so the plugin travels with the repository rather than living
+  on one machine. If the `claude` CLI is not on PATH it prints the two slash
+  commands instead. `--no-plugin` skips it, and the rules are written either
+  way — the compiler never depends on the plugin step succeeding.
+
+### Fixed
+- **`init` scaffolded over projects that already had rules.** It wrote a
+  placeholder `AGENTS.md` and an `example.md` rule regardless of what was
+  there, and the next `sync` compiled the placeholder on top of the project's
+  real `AGENTS.md`. `init` now adopts what it finds — the existing `AGENTS.md`
+  and the first rules directory it recognises, `.cursor/rules/*.mdc` converted
+  back to `paths:` — and seeds `example.md` only when there was nothing to
+  adopt. A tool for stopping rule drift must not cause it.
+- **`sync` now refuses to overwrite a file it did not generate.** Generated
+  files carry a banner; anything else at a generated path is the user's own
+  work. `sync` names those files, leaves them alone and exits non-zero, with
+  `--force` as the explicit opt-out. `AGENTS.md` carries the banner too — it
+  previously did not, which is why nothing could tell it apart.
+
 ## [0.5.0] — 2026-09-15
 
 `agent-os` becomes a cross-tool CLI. The Claude Code plugin is now one target
@@ -40,18 +68,6 @@ among several rather than the whole product.
 - Documentation is generic throughout; examples are invented.
 
 ### Fixed
-- **`init` scaffolded over projects that already had rules.** It wrote a
-  placeholder `AGENTS.md` and an `example.md` rule regardless of what was
-  there, and the next `sync` compiled the placeholder on top of the project's
-  real `AGENTS.md`. `init` now adopts what it finds — the existing `AGENTS.md`
-  and the first rules directory it recognises, `.cursor/rules/*.mdc` converted
-  back to `paths:` — and seeds `example.md` only when there was nothing to
-  adopt. A tool for stopping rule drift must not cause it.
-- **`sync` now refuses to overwrite a file it did not generate.** Generated
-  files carry a banner; anything else at a generated path is the user's own
-  work. `sync` names those files, leaves them alone and exits non-zero, with
-  `--force` as the explicit opt-out. `AGENTS.md` carries the banner too — it
-  previously did not, which is why nothing could tell it apart.
 - `check` reported every skill file as drifted immediately after a `sync`. Skill
   files are read as buffers so a skill can ship a binary asset, rule files are
   generated as strings, and the two were compared with `!==`. Comparison is now
