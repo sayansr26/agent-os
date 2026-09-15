@@ -1,0 +1,53 @@
+name: validate
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Structural validation
+        run: node scripts/validate-plugin.mjs
+
+      - name: Syntax-check every shipped script
+        run: |
+          for f in $(find . -name "*.mjs" -not -path "./.git/*"); do
+            echo "checking $f"
+            node --check "$f"
+          done
+
+      - name: Audit script runs and stays read-only
+        run: |
+          before=$(git status --porcelain)
+          node plugins/agent-os/skills/init/scripts/audit.mjs .
+          after=$(git status --porcelain)
+          if [ "$before" != "$after" ]; then
+            echo "::error::audit.mjs modified the working tree — it must be read-only"
+            git status --porcelain
+            exit 1
+          fi
+
+      - name: Session-resume hook runs and stays read-only
+        run: |
+          before=$(git status --porcelain)
+          node plugins/agent-os/hooks/session-resume.mjs
+          after=$(git status --porcelain)
+          if [ "$before" != "$after" ]; then
+            echo "::error::session-resume.mjs modified the working tree — it must be read-only"
+            exit 1
+          fi
+
+      - name: Every JSON file parses
+        run: |
+          for f in $(find . -name "*.json" -not -path "./.git/*" -not -path "./node_modules/*"); do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || { echo "::error::$f is not valid JSON"; exit 1; }
+          done

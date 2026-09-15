@@ -1,0 +1,76 @@
+name: Bug report
+description: Something in agent-os does not work as documented
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The audit output below is usually enough to
+        diagnose a setup problem on its own — it is read-only and shows the
+        state that matters.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: I ran /agent-os:init in a fresh repo and …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - "/agent-os:init (the setup skill)"
+        - The audit script
+        - The session-resume hook
+        - feature-cartographer
+        - Another agent (orchestrator, builder, reviewer, tester, architect, documenter)
+        - Installing or updating the plugin
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit output
+      description: >
+        Paste the output of `/agent-os:init`, or run the script directly.
+        Redact anything you would rather not share — paths and branch names
+        are the only sensitive things it prints.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: agent-os version
+      description: From `/plugin list`, or the version in plugin.json.
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Claude Code version and OS
+      description: Output of `claude --version`, plus your operating system.
+      placeholder: "2.1.2xx on macOS 15"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am on the latest version (`/plugin marketplace update sayan-plugins`)
+          required: true
+        - label: I searched existing issues
+          required: true
