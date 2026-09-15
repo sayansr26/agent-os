@@ -178,6 +178,78 @@ else if (gs) {
   say(`  SessionStart in user scope${" ".repeat(7)}${(gs.hooks || {}).SessionStart ? "yes" : "no"}`);
 } else say("  settings.json                    absent");
 
+// ---------------------------------------------------------- stack + scale
+say();
+say("PROJECT");
+const pkg = readJson(join(ROOT, "package.json"));
+const stacks = [];
+const dep = (n) => {
+  if (!pkg || pkg === "INVALID") return false;
+  return !!((pkg.dependencies || {})[n] || (pkg.devDependencies || {})[n]);
+};
+if (pkg && pkg !== "INVALID") {
+  if (dep("next")) stacks.push("Next.js");
+  else if (dep("react")) stacks.push("React");
+  if (dep("vue")) stacks.push("Vue");
+  if (dep("@nestjs/core")) stacks.push("NestJS");
+  else if (dep("express")) stacks.push("Express");
+  if (dep("typescript")) stacks.push("TypeScript");
+  if (dep("prisma") || dep("@prisma/client")) stacks.push("Prisma");
+}
+for (const [f, label] of [["pyproject.toml", "Python"], ["requirements.txt", "Python"],
+                          ["go.mod", "Go"], ["Cargo.toml", "Rust"], ["pom.xml", "Java/Maven"],
+                          ["Gemfile", "Ruby"], ["composer.json", "PHP"]])
+  if (existsSync(join(ROOT, f)) && !stacks.includes(label)) stacks.push(label);
+
+// source scale — cheap walk, skips the usual noise
+const SKIP = new Set(["node_modules", ".git", "dist", "build", "vendor", ".next", "target", "__pycache__", ".venv", "coverage"]);
+const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|rb|php|vue|svelte|kt|swift|cs)$/;
+let srcFiles = 0, srcBytes = 0, deepest = 0;
+(function walk(d, depth) {
+  if (depth > 8 || srcFiles > 20000) return;
+  for (const e of ls(d)) {
+    if (SKIP.has(e) || e.startsWith(".")) continue;
+    const fp = join(d, e);
+    let st; try { st = statSync(fp); } catch { continue; }
+    if (st.isDirectory()) { deepest = Math.max(deepest, depth + 1); walk(fp, depth + 1); }
+    else if (CODE.test(e)) { srcFiles++; srcBytes += st.size; }
+  }
+})(ROOT, 0);
+say(`  stack${" ".repeat(28)}${stacks.join(", ") || "not detected"}`);
+say(`  source files${" ".repeat(21)}${srcFiles}  (~${Math.round(srcBytes / 1024)} KB)`);
+
+// LSP — the official plugins answer "find the definition" without reading files
+const LSP = { TypeScript: "typescript-lsp", Python: "pyright-lsp", Go: "gopls-lsp", Rust: "rust-analyzer-lsp", "Java/Maven": "jdtls-lsp", Ruby: "ruby-lsp", PHP: "php-lsp" };
+const wantLsp = stacks.map((s) => LSP[s]).filter(Boolean);
+if (wantLsp.length && srcFiles > 50)
+  flag("INFO", `Install code intelligence: /plugin install ${wantLsp[0]}@claude-plugins-official — lets Claude jump to a definition instead of scanning files.`);
+
+// generated/vendored code that is checked in costs reads
+const genDirs = ["dist", "build", "vendor", "generated", "src/generated", ".next"].filter((d) => existsSync(join(ROOT, d)));
+const gi = read(join(ROOT, ".gitignore")) || "";
+const unignored = genDirs.filter((d) => !gi.split("\n").some((l) => l.trim().replace(/\/$/, "") === d));
+if (unignored.length)
+  flag("INFO", `Checked-in generated/vendored dirs (${unignored.join(", ")}) — add Read deny rules so Claude never opens them.`);
+
+// ---------------------------------------------------------- mode
+const hasLayer = residentBytes > 0 || ruleFiles.length > 0;
+const mapped = existsSync(join(ROOT, ".claude/agent-memory/agent-os-feature-cartographer"));
+let MODE;
+if (srcFiles < 5 && !hasLayer) MODE = "TOO-EARLY";
+else if (!hasLayer) MODE = "ESTABLISH";
+else if (anyLegacy || findings.some((f) => f.startsWith("WARN") || f.startsWith("FAIL"))) MODE = "MIGRATE";
+else if (!mapped) MODE = "MAP";
+else MODE = "MAINTAIN";
+say();
+say(`MODE  ${MODE}`);
+say({
+  "TOO-EARLY": "  Barely any source yet. Do not build a context layer over nothing —\n  write code first, then run Claude Code's own /init, then come back.",
+  ESTABLISH:   "  Real code, no context layer. Build one FROM THE CODE: read\n  references/establishing.md. Do not invent conventions.",
+  MIGRATE:     "  A layer exists but has problems. Fix the findings below;\n  read references/migrating.md for anything legacy.",
+  MAP:         "  Layer is healthy but the codebase has never been mapped. Build the\n  architecture map: read references/establishing.md, 'Map the architecture'.",
+  MAINTAIN:    "  Layer is healthy and the codebase is mapped. Nothing to set up.",
+}[MODE]);
+
 // ---------------------------------------------------------- verdict
 say();
 say(`STARTUP COST  ~${residentBytes} B  ~= ${Math.round(residentBytes / 4)} tokens  (always-loaded files only)`);
