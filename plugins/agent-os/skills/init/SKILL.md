@@ -45,15 +45,35 @@ posture), the startup byte and token cost, and a ranked finding list.
 **Show the output to the user before you change anything.** Do not restructure a
 repo you have only just opened.
 
-## Step 2 — Act on the findings
+## Step 2 — Route by MODE
+
+The audit ends with a `MODE` line. It decides what this run is for:
+
+| MODE | What it means | Do |
+|---|---|---|
+| `TOO-EARLY` | Barely any source | **Build nothing.** Tell the user to write code, run Claude Code's `/init`, and come back. A layer over an empty project is invented conventions. |
+| `ESTABLISH` | Real code, no context layer | `references/establishing.md` — build the layer *from the code* |
+| `MAP` | Layer healthy, never mapped | `references/establishing.md`, "Map the architecture" |
+| `MIGRATE` | Layer exists, has problems | fix the findings; `references/migrating.md` for legacy stores |
+| `MAINTAIN` | Healthy and mapped | report and stop |
+
+`ESTABLISH` and `MAP` are the modes that make a later request like *"change the
+login flow from email to OTP"* execute from known structure instead of
+rediscovering the codebase. `references/changing-a-feature.md` is that workflow —
+point the user at it once the layer exists.
+
+## Step 3 — Act on the findings
 
 Each finding routes to one place. Load only what the audit actually surfaced:
 
 | Finding | Read |
 |---|---|
+| `MODE ESTABLISH` or `MODE MAP` | `references/establishing.md` |
+| user asks how to change an existing feature | `references/changing-a-feature.md` |
 | legacy store found; CLAUDE.md over budget | `references/migrating.md` |
 | rule without `paths:`; no rules layer yet; CLAUDE.md to trim | `references/writing-rules.md` |
 | `defaultMode` auto-approves with an empty `deny` | `references/git-permissions.md` |
+| LSP plugin recommended; checked-in generated dirs | `references/establishing.md`, "Stop Claude reading what it should not" |
 | hook target missing | delete the hook entry, or restore the script — say which |
 | shadowing agent or skill in `~/.claude` or `.claude/agents/` | the user removes the standalone copy; a plugin cannot |
 | unindexed or near-duplicate agent memory topic files | merge into the best-named file, delete the rest, rebuild `MEMORY.md` as one line per file |
@@ -62,7 +82,7 @@ Each finding routes to one place. Load only what the audit actually surfaced:
 Findings on the machine layer are the user's to fix — a plugin cannot write
 `~/.claude`. Hand over the exact change rather than attempting it.
 
-## Step 3 — Verify by re-running
+## Step 4 — Verify by re-running
 
 Run the audit again and show the before and after: finding count, startup bytes,
 token estimate. Do not declare success on vibes — the script already produces the
