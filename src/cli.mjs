@@ -6,6 +6,7 @@ import { detect, summarise, TOOLS } from "./detect.mjs";
 import { load, write, readIfExists, matches, BANNER, DIR } from "./source.mjs";
 import { adopt } from "./adopt.mjs";
 import { installPlugin, MARKETPLACE, MARKETPLACE_NAME, PLUGIN } from "./plugin.mjs";
+import { ensureTodoEnv, ensureTaskRule, TODO_ENV } from "./claude-setup.mjs";
 import { compile, TARGETS } from "./targets.mjs";
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
@@ -210,6 +211,27 @@ Pick one:
     // The rules are done and safe at this point. The Claude Code plugin is the
     // other half — agents, skills, per-agent memory, the session hook — and it
     // installs from the same repo. Only on `init`, never on `sync`.
+    if (cmd === "init" && targets.includes("claude-code")) {
+      console.log(`\n${bold("Claude Code setup")}\n`);
+
+      const e = ensureTodoEnv(root, { dry });
+      const eMsg = {
+        added: `  ${e.rel}  ${dim(`env.${TODO_ENV} = "1"`)}`,
+        present: `  ${e.rel}  ${dim(`env.${TODO_ENV} already set`)}`,
+        conflict: `  ${e.rel}  ${dim(`env.${TODO_ENV} is "${e.current}" — left as you set it`)}`,
+        invalid: `  ${e.rel}  ${dim("is not valid JSON — left alone, fix it and re-run")}`,
+      }[e.status];
+      console.log(eMsg);
+
+      const t = ensureTaskRule(root, { dry });
+      const tMsg = {
+        added: `  ${t.rel}  ${dim(`task-tracking rule added under ${t.section}`)}`,
+        present: `  ${t.rel}  ${dim("task-tracking rule already there")}`,
+        "no-file": `  ${t.rel}  ${dim("absent — run /agent-os:init inside Claude Code to build it")}`,
+      }[t.status];
+      console.log(tMsg);
+    }
+
     if (cmd === "init" && targets.includes("claude-code") && !argv.includes("--no-plugin")) {
       console.log(`\n${bold("Claude Code plugin")} ${dim(`${PLUGIN}@${MARKETPLACE_NAME}`)}\n`);
       const r = installPlugin({ dry });

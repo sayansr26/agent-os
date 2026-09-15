@@ -5,11 +5,33 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] — 2026-09-15
+
+### Added
+- **`init` finishes the Claude Code project setup.** Two things that are
+  neither rules nor plugin, both written at project scope only:
+  `.claude/settings.json` gets `env.CLAUDE_CODE_ENABLE_TODO_TOOLS = "1"`,
+  merged into the existing keys rather than replacing the file; and `CLAUDE.md`
+  gets the task-tracking rule, inserted under `## Operator preferences` when
+  the project keeps that heading. Both are idempotent, an existing truthy
+  value for the flag is left as the user set it, and `CLAUDE.md` is never
+  created — a project's always-loaded context should not be invented by a CLI.
+  Nothing writes to `~/.claude/`; a project setup tool has no business editing
+  the machine's global config.
+
+### Changed
+- Plugin version 0.4.1: the audit no longer misreports generated rule
+  directories as legacy stores.
+
+### Notes
+- 0.5.0, 0.5.1 and 0.5.2 were developed but never published; the first release
+  to reach npm will carry whichever of these numbers it ships under.
+
 ## [0.5.1] — 2026-09-15
 
 Found by running 0.5.0 against a real repository that already had six
 path-scoped rules and a hand-written `AGENTS.md`. It overwrote the
-`AGENTS.md`. 0.5.0 was never published.
+`AGENTS.md`.
 
 ### Added
 - **`init` installs the Claude Code plugin.** When Claude Code is detected it

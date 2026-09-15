@@ -114,6 +114,47 @@ try {
     rmSync(r3, { recursive: true, force: true });
   }
 
+  console.log("\n  Claude Code project setup");
+  {
+    const r5 = mkdtempSync(join(tmpdir(), "agent-os-cc-"));
+    mkdirSync(join(r5, ".claude"), { recursive: true });
+    // An existing settings.json with unrelated keys must survive untouched.
+    writeFileSync(join(r5, ".claude/settings.json"),
+      JSON.stringify({ permissions: { deny: ["Bash(git push *)"] }, env: { FOO: "bar" } }, null, 2));
+    writeFileSync(join(r5, "CLAUDE.md"),
+      "# CLAUDE.md\n\nStack notes.\n\n## Operator preferences\n\n- Never run git unasked.\n\n## Verification\n\nRun make test.\n");
+
+    cli(["init", "--no-plugin"], r5);
+    const st = JSON.parse(readFileSync(join(r5, ".claude/settings.json"), "utf8"));
+    ok(st.env.CLAUDE_CODE_ENABLE_TODO_TOOLS === "1", "todo tools enabled in project settings");
+    ok(st.env.FOO === "bar", "existing env keys preserved");
+    ok(st.permissions?.deny?.[0] === "Bash(git push *)", "existing permissions preserved");
+
+    const cm = readFileSync(join(r5, "CLAUDE.md"), "utf8");
+    ok(cm.includes("TaskCreate / TaskUpdate"), "task-tracking rule added to CLAUDE.md");
+    ok(cm.indexOf("TaskCreate") > cm.indexOf("## Operator preferences") &&
+       cm.indexOf("TaskCreate") < cm.indexOf("## Verification"),
+       "rule lands inside Operator preferences, not at the end");
+    ok(cm.includes("Never run git unasked."), "existing CLAUDE.md content preserved");
+
+    // Idempotent: a second init must not duplicate either.
+    cli(["init", "--no-plugin"], r5);
+    const cm2 = readFileSync(join(r5, "CLAUDE.md"), "utf8");
+    ok(cm2.split("TaskCreate").length - 1 === 1, "second init does not duplicate the rule");
+
+    // A user who set the flag their own way keeps their value.
+    const r6 = mkdtempSync(join(tmpdir(), "agent-os-cc2-"));
+    mkdirSync(join(r6, ".claude"), { recursive: true });
+    writeFileSync(join(r6, ".claude/settings.json"),
+      JSON.stringify({ env: { CLAUDE_CODE_ENABLE_TODO_TOOLS: "true" } }, null, 2));
+    cli(["init", "--no-plugin"], r6);
+    ok(JSON.parse(readFileSync(join(r6, ".claude/settings.json"), "utf8"))
+       .env.CLAUDE_CODE_ENABLE_TODO_TOOLS === "true", "an existing truthy value is left as the user set it");
+
+    rmSync(r5, { recursive: true, force: true });
+    rmSync(r6, { recursive: true, force: true });
+  }
+
   console.log("\n  merge, not overwrite");
   writeFileSync(join(root, "opencode.json"), JSON.stringify({ model: "anthropic/x", instructions: ["KEEP.md"] }, null, 2));
   cli(["sync"], root);
