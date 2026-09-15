@@ -18,6 +18,12 @@ jobs:
       - name: Structural validation
         run: node scripts/validate-plugin.mjs
 
+      - name: Compiler self-test
+        run: node src/selftest.mjs
+
+      - name: Package contents
+        run: npm pack --dry-run
+
       - name: Syntax-check every shipped script
         run: |
           for f in $(find . -name "*.mjs" -not -path "./.git/*"); do
@@ -51,3 +57,14 @@ jobs:
           for f in $(find . -name "*.json" -not -path "./.git/*" -not -path "./node_modules/*"); do
             node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || { echo "::error::$f is not valid JSON"; exit 1; }
           done
+
+      - name: Installed package works end to end
+        run: |
+          set -e
+          tgz=$(npm pack --silent)
+          npm i -g --prefix "$RUNNER_TEMP/p" "./$tgz"
+          mkdir -p "$RUNNER_TEMP/proj/.claude" && cd "$RUNNER_TEMP/proj"
+          "$RUNNER_TEMP/p/bin/agent-os" init
+          "$RUNNER_TEMP/p/bin/agent-os" check
+          "$RUNNER_TEMP/p/bin/agent-os" detect
+          "$RUNNER_TEMP/p/bin/agent-os" memory

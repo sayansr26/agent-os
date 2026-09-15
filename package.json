@@ -1,0 +1,49 @@
+{
+  "name": "@sayansr26/agent-os",
+  "version": "0.5.0",
+  "description": "One source of truth for AI coding agent config. Write your rules once; compile them to Claude Code, Cursor, Cline, Windsurf, Antigravity, Gemini CLI, OpenCode and Kilo.",
+  "keywords": [
+    "ai",
+    "agents",
+    "claude-code",
+    "cursor",
+    "cline",
+    "windsurf",
+    "antigravity",
+    "gemini-cli",
+    "opencode",
+    "agents-md",
+    "context-engineering",
+    "developer-tools"
+  ],
+  "homepage": "https://github.com/sayansr26/agent-os",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sayansr26/agent-os.git"
+  },
+  "license": "MIT",
+  "author": "Sayan Choudhury",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "agent-os": "bin/agent-os.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "plugins",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node scripts/validate-plugin.mjs && node src/selftest.mjs",
+    "prepublishOnly": "npm test"
+  }
+}

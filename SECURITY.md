@@ -10,7 +10,7 @@ Only the latest released version receives fixes. Update with
 Please **do not open a public issue** for a security problem.
 
 Report it privately through
-[GitHub Security Advisories](https://github.com/sayansr26/claude-agent-os/security/advisories/new),
+[GitHub Security Advisories](https://github.com/sayansr26/agent-os/security/advisories/new),
 or by email to sayan.choudhury.in@gmail.com.
 
 Include what an attacker could achieve, the steps to reproduce, and the version
