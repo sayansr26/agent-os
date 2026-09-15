@@ -40,10 +40,14 @@ installed from the marketplace.
 plugins/agent-os/
   .claude-plugin/plugin.json      the plugin manifest
   agents/                         seven subagent definitions
-  skills/init/                    the setup-and-migrate skill
-    SKILL.md                      routing only — kept small, loads on invoke
-    references/                   loaded only when a finding calls for them
-    scripts/audit.mjs             the deterministic audit
+  skills/
+    init/                         audit, establish or migrate the context layer
+      SKILL.md                    routing only — kept small, loads on invoke
+      references/                 loaded only when a finding calls for them
+      scripts/audit.mjs           the deterministic audit
+    map/                          architecture and per-feature maps
+    memory/                       inspect and repair what a project remembers
+      scripts/memory.mjs          deterministic store listing and health check
   hooks/                          hooks.json + session-resume.mjs
 scripts/validate-plugin.mjs       structural validation, runs in CI
 ```
