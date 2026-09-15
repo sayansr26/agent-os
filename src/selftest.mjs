@@ -53,11 +53,56 @@ try {
 
   console.log("\n  drift");
   ok(cli(["check"], root).status === 0, "check passes when in sync");
-  writeFileSync(join(root, ".cursor/rules/api.mdc"), "hand edited\n");
+  // Realistic drift: someone edits the body of a generated file and leaves the
+  // banner in place. sync owns that file and must put it back.
+  writeFileSync(join(root, ".cursor/rules/api.mdc"),
+    read(".cursor/rules/api.mdc").replace("Validate at the boundary.", "hand edited"));
   const d = cli(["check"], root);
   ok(d.status === 1, "check exits 1 on drift");
   ok(d.stdout.includes("DRIFTED"), "check names the drifted file");
   ok(cli(["sync"], root).status === 0 && cli(["check"], root).status === 0, "sync repairs drift");
+  // Banner stripped: now indistinguishable from a hand-written file, so sync
+  // refuses rather than guessing.
+  writeFileSync(join(root, ".cursor/rules/api.mdc"), "mine now\n");
+  ok(cli(["sync"], root).status === 1, "sync refuses once the banner is gone");
+  ok(read(".cursor/rules/api.mdc") === "mine now\n", "and leaves that file untouched");
+  cli(["sync", "--force"], root);
+
+  console.log("\n  never clobbers what it did not write");
+  {
+    const r2 = mkdtempSync(join(tmpdir(), "agent-os-adopt-"));
+    mkdirSync(join(r2, ".claude/rules"), { recursive: true });
+    const realAgents = "# Real AGENTS.md\n\nCLAUDE.md is the source of truth.\n";
+    writeFileSync(join(r2, "AGENTS.md"), realAgents);
+    writeFileSync(join(r2, ".claude/rules/theming.md"),
+      '---\ndescription: Theming\npaths:\n  - "src/**/*.tsx"\n---\n\nUse the token set.\n');
+
+    const i = cli(["init"], r2);
+    ok(i.status === 0, "init exits 0 on a project that already has rules");
+    ok(readFileSync(join(r2, "AGENTS.md"), "utf8") === realAgents ||
+       readFileSync(join(r2, ".agent-os/AGENTS.md"), "utf8") === realAgents,
+       "existing AGENTS.md becomes the source rather than being replaced");
+    ok(existsSync(join(r2, ".agent-os/rules/theming.md")), "existing .claude/rules/ are adopted");
+    ok(!existsSync(join(r2, ".agent-os/rules/example.md")), "no example.md when real rules were adopted");
+    ok(!existsSync(join(r2, ".claude/rules/example.md")), "no example.md compiled into the project");
+
+    // A hand-written file at a generated path must survive a sync.
+    const r3 = mkdtempSync(join(tmpdir(), "agent-os-guard-"));
+    mkdirSync(join(r3, ".agent-os/rules"), { recursive: true });
+    writeFileSync(join(r3, ".agent-os/config.json"), JSON.stringify({ targets: ["claude-code"] }));
+    writeFileSync(join(r3, ".agent-os/AGENTS.md"), "# Compiled\n");
+    writeFileSync(join(r3, ".agent-os/rules/x.md"), '---\npaths:\n  - "a/**"\n---\n\nBody.\n');
+    const mine = "# Mine, by hand\n";
+    writeFileSync(join(r3, "AGENTS.md"), mine);
+    const g = cli(["sync"], r3);
+    ok(g.status === 1, "sync exits 1 rather than clobbering");
+    ok(readFileSync(join(r3, "AGENTS.md"), "utf8") === mine, "hand-written AGENTS.md survives sync");
+    ok(g.stdout.includes("SKIPPED"), "sync says which file it left alone");
+    const fg = cli(["sync", "--force"], r3);
+    ok(fg.status === 0 && readFileSync(join(r3, "AGENTS.md"), "utf8") !== mine, "--force overwrites when asked");
+    rmSync(r2, { recursive: true, force: true });
+    rmSync(r3, { recursive: true, force: true });
+  }
 
   console.log("\n  merge, not overwrite");
   writeFileSync(join(root, "opencode.json"), JSON.stringify({ model: "anthropic/x", instructions: ["KEEP.md"] }, null, 2));
