@@ -11,6 +11,7 @@
  *  - a JSON-escaped description wrote — into YAML
  *  - plugin.json and marketplace.json drifted out of version sync
  *  - a hook pointed at a script that had been deleted
+ *  - a version was bumped without a changelog entry, twice
  *
  * Usage: node scripts/validate-plugin.mjs [pluginDir]
  * Exit 0 = clean, 1 = failures.
@@ -54,6 +55,28 @@ const mk = json(MARKET);
 pj.err ? bad(`plugin.json: ${pj.err}`) : ok("plugin.json parses");
 mk.err ? bad(`marketplace.json: ${mk.err}`) : ok("marketplace.json parses");
 
+// ---- release hygiene ----
+// Shipping a version the changelog does not mention has happened twice now. It
+// is a deterministic check, so it belongs in a script rather than in a habit.
+console.log("\nrelease hygiene");
+{
+  const pkg = json("package.json");
+  const changelog = read("CHANGELOG.md");
+  if (pkg.err) bad(`package.json: ${pkg.err}`);
+  else if (changelog === null) bad("CHANGELOG.md is missing");
+  else {
+    const v = pkg.val.version;
+    const heads = [...changelog.matchAll(/^## \[([^\]]+)\]/gm)].map((m) => m[1]);
+    heads.includes(v)
+      ? ok(`CHANGELOG documents package version ${v}`)
+      : bad(`package.json is ${v} but CHANGELOG.md has no "## [${v}]" section (newest: ${heads[0] || "none"})`);
+    heads[0] === v
+      ? ok(`${v} is the newest changelog entry`)
+      : bad(`newest changelog entry is ${heads[0]}, not the package version ${v}`);
+  }
+}
+
+console.log("");
 if (pj.val && mk.val) {
   const entry = (mk.val.plugins || []).find((p) => p.name === pj.val.name);
   entry ? ok(`marketplace lists "${pj.val.name}"`) : bad(`marketplace.json has no entry named "${pj.val.name}"`);
