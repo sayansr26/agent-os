@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.2] — 2026-09-15
+## [0.5.3] — 2026-09-15
 
 ### Added
 - **`init` finishes the Claude Code project setup.** Two things that are
@@ -13,25 +13,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `.claude/settings.json` gets `env.CLAUDE_CODE_ENABLE_TODO_TOOLS = "1"`,
   merged into the existing keys rather than replacing the file; and `CLAUDE.md`
   gets the task-tracking rule, inserted under `## Operator preferences` when
-  the project keeps that heading. Both are idempotent, an existing truthy
-  value for the flag is left as the user set it, and `CLAUDE.md` is never
-  created — a project's always-loaded context should not be invented by a CLI.
-  Nothing writes to `~/.claude/`; a project setup tool has no business editing
-  the machine's global config.
+  the project keeps that heading. Both are idempotent, an existing truthy value
+  for the flag is left as the user set it, and `CLAUDE.md` is never created — a
+  project's always-loaded context should not be invented by a CLI. Nothing
+  writes to `~/.claude/`; a project setup tool has no business editing the
+  machine's global config.
+- **The validator checks release hygiene.** `package.json`'s version must have
+  a matching `## [x.y.z]` changelog section, and it must be the newest one.
+  0.5.2 shipped with no entry of its own; a deterministic check belongs in a
+  script rather than in a habit.
 
 ### Changed
-- Plugin version 0.4.1: the audit no longer misreports generated rule
-  directories as legacy stores.
+- Plugin 0.4.1: the audit no longer misreports a generated rules directory as a
+  legacy store to fold into `CLAUDE.md` and delete.
 
-### Notes
-- 0.5.0, 0.5.1 and 0.5.2 were developed but never published; the first release
-  to reach npm will carry whichever of these numbers it ships under.
-
-## [0.5.1] — 2026-09-15
-
-Found by running 0.5.0 against a real repository that already had six
-path-scoped rules and a hand-written `AGENTS.md`. It overwrote the
-`AGENTS.md`.
+## [0.5.2] — 2026-09-15
 
 ### Added
 - **`init` installs the Claude Code plugin.** When Claude Code is detected it
@@ -40,6 +36,11 @@ path-scoped rules and a hand-written `AGENTS.md`. It overwrote the
   on one machine. If the `claude` CLI is not on PATH it prints the two slash
   commands instead. `--no-plugin` skips it, and the rules are written either
   way — the compiler never depends on the plugin step succeeding.
+
+## [0.5.1] — 2026-09-15
+
+Found by running 0.5.0 against a real repository that already had six
+path-scoped rules and a hand-written `AGENTS.md`. It overwrote the `AGENTS.md`.
 
 ### Fixed
 - **`init` scaffolded over projects that already had rules.** It wrote a
