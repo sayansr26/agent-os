@@ -22,17 +22,17 @@ It reads `_architecture.md` and any existing map first, explores only what is
 missing, and returns about forty lines in **its** context, not yours:
 
 ```
-Entry:      src/features/auth/login.tsx:24 (route /login, nav: none)
-Renders:    LoginForm.themed.tsx, OtpDialog.tsx (already exists — used by password reset)
-State:      auth.slice — also read by RoleProvider, PermissionProvider
+Entry:      src/features/auth/LoginPage.tsx:24 (route /login)
+Renders:    LoginForm.tsx, OtpDialog.tsx (already exists — used by password reset)
+State:      authSlice — also read by the session provider
 Network:    services/auth.api.ts -> POST /auth/login, POST /auth/refresh
 Gated by:   nothing; /login is public
 
 Blast radius
 - useAuth() — imported by 14 files outside this feature
-- auth.slice.login — dispatched from 3 places
+- authSlice.login — dispatched from 3 places
 
-To change the login method, edit: services/auth.api.ts, login.tsx, auth.slice.ts
+To change the login method, edit: services/auth.api.ts, LoginPage.tsx, authSlice.ts
 Watch out
 - OtpDialog already exists for password reset; reuse it rather than writing one
 ```
@@ -79,8 +79,8 @@ highest-severity finding available, because the project already decided.
 
 ## Step 6 — Update the map, in the same turn
 
-**The map is now stale.** The login flow no longer works the way `login.md` says
-it does.
+**The map is now stale.** The login flow no longer works the way its topic file
+says it does.
 
 Re-dispatch the cartographer to update the topic file for the area you changed,
 or the change silently poisons the next question about it. A map that was right

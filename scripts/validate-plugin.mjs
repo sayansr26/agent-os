@@ -15,7 +15,7 @@
  * Usage: node scripts/validate-plugin.mjs [pluginDir]
  * Exit 0 = clean, 1 = failures.
  */
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, basename } from "node:path";
 
 const PLUGIN = process.argv[2] || "plugins/agent-os";
@@ -119,6 +119,35 @@ else {
       }
   }
 }
+
+// ---- leak check ----
+// Examples in a public plugin must be invented, never lifted from a real
+// codebase you happen to have open. This cannot be checked generically, so
+// maintainers keep a local, gitignored `.leakcheck` — one term per line — of
+// identifiers that must never be published. The file is not committed, so the
+// terms themselves never enter the repository.
+const leakFile = read(".leakcheck");
+if (leakFile) {
+  console.log("\nleak check");
+  const terms = leakFile.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  const scan = [];
+  (function walk(d) {
+    for (const e of readdirSync(d)) {
+      if ([".git", "node_modules"].includes(e)) continue;
+      const fp = join(d, e);
+      if (statSync(fp).isDirectory()) walk(fp);
+      else if (/\.(md|mjs|js|json|ya?ml)$/.test(e)) scan.push(fp);
+    }
+  })(".");
+  let hits = 0;
+  for (const f of scan) {
+    if (f.endsWith("validate-plugin.mjs")) continue;
+    const body = read(f) || "";
+    for (const term of terms)
+      if (body.toLowerCase().includes(term.toLowerCase())) { bad(`${f} contains "${term}" — examples must be invented, not lifted from a real codebase`); hits++; }
+  }
+  if (!hits) ok(`no leaked identifiers (${terms.length} term(s) checked)`);
+} 
 
 console.log(`\n${failures ? "FAILED" : "PASSED"}  ${checks - failures}/${checks} checks\n`);
 process.exit(failures ? 1 : 0);

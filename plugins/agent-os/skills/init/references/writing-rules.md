@@ -29,7 +29,8 @@ Rules of thumb:
 - Dense agent notes, not prose docs: invariants, terse bullets, the non-obvious.
   Skip rationale and examples unless they prevent a likely mistake.
 - A gotcha is worth more than a description. "X is at Y" is derivable; "X looks
-  like it is at Y but is actually at Z, and docs/12 says otherwise" is not.
+  like it is at Y but is actually at Z, and the project's own docs say otherwise"
+is not.
 
 ## Trim CLAUDE.md
 

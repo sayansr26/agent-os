@@ -71,6 +71,18 @@ JSON keys do not need a model to discover them one Read at a time. If you find
 yourself writing "then check whether X exists" into a skill, write it into
 `audit.mjs` instead.
 
+**Every example must be invented.** File paths, symbol names, branch names,
+commit messages and sample output in this repository are illustrative and must
+not be lifted from a real codebase — least of all a client's. It is an easy
+mistake: you write the docs with a real project open and copy what is in front of
+you. The result is someone else's internal structure published under your name.
+
+Write examples that are obviously generic (`LoginPage.tsx`, `authSlice`,
+`services/auth.api.ts`) and make sure they illustrate the point without
+describing any particular system. If you maintain client repositories, keep a
+gitignored `.leakcheck` at the repo root — one identifier per line — and
+`scripts/validate-plugin.mjs` will fail if any of them appear.
+
 **Context cost is a review criterion.** Agent *descriptions* load on every turn
 in every project; agent *bodies* do not. Adding 400 bytes to a description is a
 tax on everyone forever. Say in your PR what your change costs.

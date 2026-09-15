@@ -16,6 +16,7 @@ a perfectly good answer.
 ## Checks
 
 - [ ] `node scripts/validate-plugin.mjs` passes
+- [ ] Every example is invented — no file path, symbol, branch or commit message lifted from a real codebase
 - [ ] `claude plugin validate ./plugins/agent-os --strict` passes
 - [ ] Loaded with `--plugin-dir` and exercised the change
 - [ ] Any new agent has `memory: project` and a description that says when to use it
