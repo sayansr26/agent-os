@@ -5,6 +5,69 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-09-15
+
+### Added
+- `/agent-os:memory` — inspect, repair and edit what a project remembers: agent
+  memory, Claude Code auto memory and `.claude/rules/`. Script-backed, read-only
+  by default. `--stale` compares each map's `mapped:` date against the last commit
+  touching the file it describes. Arguments: `list`, `show`, `clean`, `forget`,
+  `stale`.
+- `/agent-os:map` — build or refresh the architecture map and per-feature maps,
+  dispatched to `feature-cartographer` so file reads never enter the main
+  conversation. Arguments: `architecture`, `<feature>`, `refresh`.
+- `/agent-os:init` gains `audit` and `settings` arguments.
+- The audit now recommends the extension mechanisms a project could use — nested
+  `CLAUDE.md`, a `PostToolUse` lint hook, a `PreToolUse` guard, the `context7` MCP
+  server, project skills, a project subagent, `Read` deny rules — each gated on
+  evidence in the repository rather than offered as a checklist.
+
+### Notes
+- Three skills with argument dispatch rather than one skill per verb. Skill
+  descriptions load on every turn in every project; eight skills would have cost
+  roughly 2.5 KB resident. Three cost 636 B, taking the plugin from 636 to 786
+  tokens per turn.
+- The settings pass **proposes and never applies**. `permissions.deny` is the
+  guardrail on the agent's own behaviour, and a skill that edits its own
+  guardrails unasked is the thing that setting exists to prevent.
+
+## [0.3.0] — 2026-09-15
+
+The goal is not smaller context. It is that every project **has** an
+architectural memory, so a request like "change the login flow from email to OTP"
+runs off known structure and known conventions instead of rediscovering the
+codebase. Smaller context is the consequence.
+
+### Added
+- **The architecture map.** `_architecture.md` is now first-class in
+  `feature-cartographer`'s memory — stack, layers, where a request enters and how
+  it reaches data, state, network edge, auth model, the files a newcomer reads
+  first. The cartographer reads it before anything else, so a feature question
+  explores a fraction of what it would cold, and must correct it in the same turn
+  when a change contradicts it.
+- **`references/establishing.md`** — build a context layer *from* an existing
+  codebase. The convention-extraction method: find at least three independent
+  examples, read them fully, write down only what all three agree on, note what
+  varies as drift rather than picking a winner, and cite the files. One file is a
+  sample, two is a coincidence, three that agree is a convention.
+- **`references/changing-a-feature.md`** — the workflow for changing code that
+  already exists: cartographer answers *how is it built* → find the nearest
+  precedent → path-scoped rules load themselves → `builder` works from the map and
+  precedent rather than the one-line request → `reviewer` checks against written
+  rules → **the cartographer updates the map in the same turn**.
+- Audit detects stack and source scale, and emits a `MODE`: `TOO-EARLY`,
+  `ESTABLISH`, `MAP`, `MIGRATE` or `MAINTAIN`, which decides what the run is for.
+- Audit recommends the official code intelligence plugin for the detected
+  language, and `Read` deny rules for checked-in generated or vendored paths.
+
+### Changed
+- `init` was a migration tool. On a fresh project it found nothing and had nothing
+  true to write, and the undefined behaviour there invited inventing conventions.
+  `TOO-EARLY` now says so explicitly and builds nothing; `ESTABLISH` builds the
+  layer from the code.
+- The skill defers to Claude Code's own `/init` and `/doctor` for the first
+  `CLAUDE.md` draft instead of duplicating them.
+
 ## [0.2.0] — 2026-09-15
 
 ### Added
@@ -76,6 +139,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 Initial release: the memory layer, `feature-cartographer`, six coordinated
 agents, the session-resume hook, and the setup skill.
 
+[0.4.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.4.0
+[0.3.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.2.0
 [0.1.5]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.5
 [0.1.4]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.4

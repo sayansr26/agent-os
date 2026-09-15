@@ -231,6 +231,54 @@ const unignored = genDirs.filter((d) => !gi.split("\n").some((l) => l.trim().rep
 if (unignored.length)
   flag("INFO", `Checked-in generated/vendored dirs (${unignored.join(", ")}) — add Read deny rules so Claude never opens them.`);
 
+// ---------------------------------------------------------- what to add
+// Signals for each extension mechanism Claude Code offers. Only suggest one
+// when the repo shows evidence it would help — an unused mechanism is cost.
+say();
+say("WHAT THIS PROJECT COULD ADD");
+const rec = [];
+
+// per-directory CLAUDE.md for monorepos
+const pkgDirs = ["packages", "apps", "services", "libs"].filter((d) => existsSync(join(ROOT, d)));
+if (pkgDirs.length) {
+  const subs = pkgDirs.flatMap((d) => ls(join(ROOT, d)).filter((s) => { try { return statSync(join(ROOT, d, s)).isDirectory(); } catch { return false; } }));
+  if (subs.length >= 3) rec.push(["CLAUDE.md (nested)", `${subs.length} packages under ${pkgDirs.join("/")} — a per-package CLAUDE.md loads only when Claude reads there`]);
+}
+
+// hooks: a linter exists but nothing runs it
+const lintCfg = ["eslint.config.js", ".eslintrc", ".eslintrc.json", "biome.json", "ruff.toml", ".golangci.yml"].find((f) => existsSync(join(ROOT, f)));
+const hookEvents = projSettings && projSettings !== "INVALID" ? Object.keys(projSettings.hooks || {}) : [];
+if (lintCfg && !hookEvents.includes("PostToolUse"))
+  rec.push(["hook: PostToolUse", `${lintCfg} exists but nothing lints after an edit — a PostToolUse hook feeds errors straight back`]);
+if (ruleFiles.length && !hookEvents.includes("PreToolUse"))
+  rec.push(["hook: PreToolUse", "rules are written but nothing enforces them — a PreToolUse guard blocks the violation instead of describing it"]);
+
+// MCP: dependencies that postdate model training
+if (pkg && pkg !== "INVALID") {
+  const fast = ["react", "next", "tailwindcss", "react-router-dom", "vue", "svelte", "@angular/core"].filter(dep);
+  const servers = mcp && mcp !== "INVALID" ? Object.keys(mcp.mcpServers || {}) : [];
+  if (fast.length && !servers.includes("context7"))
+    rec.push(["MCP: context7", `${fast.slice(0, 3).join(", ")} move faster than model training — context7 serves current API docs`]);
+}
+
+// skills: repeated procedures worth capturing
+const skillDirs = ls(join(ROOT, ".claude/skills"));
+if (!skillDirs.length && srcFiles > 100)
+  rec.push(["skills", "no project skills — a multi-step procedure you repeat (scaffolding a feature, a release) belongs in one, loaded on invoke not every turn"]);
+
+// agents: only when there is a real repeated specialised review
+const projAgentFiles = ls(join(ROOT, ".claude/agents"));
+if (!projAgentFiles.length && ruleFiles.length >= 4)
+  rec.push(["agents (project)", `${ruleFiles.length} rule files — if one area needs auditing after every change, a project subagent enforces it`]);
+
+// settings: worktree/read hygiene
+if (srcFiles > 500 && !(projSettings && projSettings !== "INVALID" && projSettings.permissions?.deny?.length))
+  rec.push(["settings: Read deny", "large tree with no Read deny rules — block generated and vendored paths"]);
+
+if (!rec.length) say("  nothing obvious — the mechanisms in use look proportionate");
+for (const [what, why] of rec) say(`  ${what.padEnd(24)} ${why}`);
+if (rec.length) flag("INFO", `${rec.length} extension(s) this project could use — see the list above. Each one costs context, so add only what earns it.`);
+
 // ---------------------------------------------------------- mode
 const hasLayer = residentBytes > 0 || ruleFiles.length > 0;
 const mapped = existsSync(join(ROOT, ".claude/agent-memory/agent-os-feature-cartographer"));

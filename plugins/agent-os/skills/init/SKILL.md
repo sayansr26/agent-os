@@ -22,6 +22,17 @@ The principle the whole layout serves: **storing a fact and loading a fact are
 different acts.** Anything that makes them the same act — a handbook CLAUDE.md,
 a memory-bank read at every startup, a rules file with no `paths:` — is the bug.
 
+## `$ARGUMENTS`
+
+| Argument | Do |
+|---|---|
+| *(none)* | The full pass: audit, then route by MODE |
+| `audit` | Run the audit and report. Change nothing. |
+| `settings` | The settings and permissions pass only — read `~/.claude/settings.json` and the project's, report what is set, and propose changes. See below. |
+
+Related skills: `/agent-os:map` builds the architecture map, `/agent-os:memory`
+inspects and repairs what the project remembers.
+
 ## Step 1 — Run the audit
 
 One call. Do not rediscover this with a dozen Read and Grep round trips — the
@@ -87,6 +98,30 @@ Findings on the machine layer are the user's to fix — a plugin cannot write
 Run the audit again and show the before and after: finding count, startup bytes,
 token estimate. Do not declare success on vibes — the script already produces the
 numbers, so quote them.
+
+## The settings pass
+
+The audit already reads both settings files and reports `defaultMode`, the deny
+list, hook registrations and shadowing. To act on it:
+
+1. **Show what is set** — project `.claude/settings.json` and `~/.claude/settings.json`,
+   side by side, so the user can see which rules exist only in this project and
+   therefore vanish in every other one.
+2. **Propose, do not apply.** Write out the exact JSON block and ask. This is the
+   one place where acting first is wrong: `permissions.deny` is the guardrail on
+   your own behaviour, and a skill that edits its own guardrails without being
+   asked is exactly the thing the setting exists to prevent. Apply only after an
+   explicit yes, and never widen an existing deny list without pointing out what
+   it would stop blocking.
+3. **What to propose**, when the audit flagged it:
+   - git write protection — `references/git-permissions.md` has the rule set
+   - `Read` deny rules for checked-in generated or vendored paths
+   - a code intelligence plugin for the detected language
+   - `claudeMdExcludes` in a monorepo where other teams' files load
+
+Anything under `~/.claude/` affects every project on the machine. Say so before
+proposing it, and prefer the project's own settings file when the rule is really
+about this project.
 
 ## What this skill will not do
 

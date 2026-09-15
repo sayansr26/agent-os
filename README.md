@@ -1,6 +1,8 @@
 # claude-agent-os
 
-**A Claude Code plugin for context engineering** — per-project agent memory, a codebase-mapping agent, path-scoped `CLAUDE.md` rules, and a coordinated subagent set. No database, no embeddings, no MCP server.
+**A Claude Code plugin for context engineering.** Gives every project a durable architectural memory, so a request like *"change the login flow from email to OTP"* runs off known structure and known conventions instead of rediscovering the codebase from a cold grep.
+
+No database, no embeddings, no MCP server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-6b4fbb)](https://code.claude.com/docs/en/plugins)
@@ -21,6 +23,16 @@ Then in any project:
 ```
 /agent-os:init
 ```
+
+### Commands
+
+| | |
+|---|---|
+| `/agent-os:init` | Audit the project, then establish or repair its context layer. `audit` to report only, `settings` for the permissions pass. |
+| `/agent-os:map` | Build the architecture map, or map one feature. `refresh` re-maps what has drifted. |
+| `/agent-os:memory` | Inspect and repair what the project remembers. `clean`, `forget <x>`, `stale`. |
+
+Plus seven agents you ask for by name, not by slash command.
 
 Not for you? One line to remove it, nothing left behind:
 
@@ -112,15 +124,63 @@ Capped at 40 lines, fails silent, never writes anything.
 
 ---
 
-## How do I find how a feature is implemented?
+## How do I change a feature without re-reading the codebase?
 
-Ask the `feature-cartographer`:
+This is the thing the whole design exists for. Say the request is *"change the login flow from email to OTP"*.
 
-> use the feature-cartographer to map the checkout flow
+The instinct is to grep for `login` and start opening files. That burns context, finds the obvious call sites, misses the non-obvious ones, and produces a change written in the model's default style rather than this codebase's.
 
-The first time it explores in **its own context window** and returns ~40 lines — entry point, the files that matter, the state, the network edge, what gates it, and the blast radius. Then it writes the map to disk. Every time after, it answers from the map.
+Instead:
 
-Either way your main context pays only for the answer, never the exploration.
+**1. The cartographer answers how it is built** — reading the architecture map first, exploring only what is missing, in *its* context window:
+
+```
+Entry:      src/features/auth/login.tsx:24 (route /login)
+Renders:    LoginForm.themed.tsx, OtpDialog.tsx (already exists — used by password reset)
+State:      auth.slice — also read by RoleProvider, PermissionProvider
+Network:    services/auth.api.ts -> POST /auth/login, POST /auth/refresh
+
+Blast radius
+- useAuth() — imported by 14 files outside this feature
+
+Watch out
+- OtpDialog already exists for password reset; reuse it rather than writing one
+```
+
+That last line is the argument for all of this. A cold grep for `login` never finds it, and you ship a second OTP dialog.
+
+**2. Find the nearest precedent** — what did this codebase already do that resembles this change? Matching an existing precedent beats a cleaner design that matches nothing else in the repo.
+
+**3. The rules load themselves.** Touching `src/features/auth/` pulls in the feature rules; touching a service pulls in the service conventions. Nothing to fetch, nothing to paste.
+
+**4. `builder` works from the map and the precedent**, not from the one-line request — and matches the nearest existing example for anything the rules do not cover.
+
+**5. `reviewer` checks against written rules** first, then correctness and the seams.
+
+**6. The cartographer updates the map in the same turn.** This is the step everyone skips, and skipping it is how a map becomes confidently wrong.
+
+| | Cold | With the map |
+|---|---|---|
+| Finding how it works | 15–30 file reads in your context | ~40 lines from a subagent |
+| Finding the conventions | re-derived, inconsistently | loaded automatically by path |
+| Finding the precedent | usually missed | named in the map |
+| Second change to the same area | the same cost again | near zero |
+
+## How do I set this up on a project that has nothing?
+
+`/agent-os:init` audits first and reports a `MODE` that decides what the run is for:
+
+| MODE | What happens |
+|---|---|
+| `TOO-EARLY` | **Nothing is built.** Barely any source — a layer over an empty project is invented conventions. Write code, run Claude Code's `/init`, come back. |
+| `ESTABLISH` | Real code, no layer. Builds one *from the code*. |
+| `MAP` | Layer healthy, never mapped. Builds the architecture map. |
+| `MIGRATE` | Layer exists with problems — legacy `memory-bank/`, an over-budget `CLAUDE.md`, a hook pointing at a deleted script. |
+| `MAINTAIN` | Healthy and mapped. Reports and stops. |
+
+The rule throughout: **everything written must be observed in your repository.** Not what the model knows about React. A convention is what at least three independent examples agree on — one file is a sample, two a coincidence — and every rule cites the files it came from, so it can be re-checked later.
+
+It also flags what Claude Code offers that you are not using: the official code intelligence plugin for your language (jumping to a definition beats scanning the tree), `Read` deny rules for checked-in generated code, a lint hook when a linter config exists but nothing runs it, `context7` when your dependencies move faster than model training. Each gated on evidence in the repo, not offered as a checklist.
 
 ---
 
@@ -130,7 +190,7 @@ Either way your main context pays only for the answer, never the exploration.
 
 Every one reads your `CLAUDE.md` and the matching `.claude/rules/` before acting — so the same agent set behaves correctly in a Next.js monorepo and a Django service, because the project-specific part lives in the project, not baked into the agent.
 
-All use `memory: project` scope, so one repo's knowledge never leaks into another.
+All use `memory: project` scope, so one repo's knowledge never leaks into another. `feature-cartographer` keeps `_architecture.md` — stack, layers, how a request reaches data, the auth model, the files a newcomer reads first — and reads it before anything else, so every feature question starts from the skeleton rather than cold.
 
 Agents aren't slash commands — ask for them by name, or let Claude pick one from the task.
 
