@@ -1,4 +1,4 @@
-# Contributing to claude-agent-os
+# Contributing to agent-os
 
 Thanks for taking a look. Issues and pull requests are both welcome.
 

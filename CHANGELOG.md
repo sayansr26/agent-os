@@ -5,6 +5,58 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-09-15
+
+`agent-os` becomes a cross-tool CLI. The Claude Code plugin is now one target
+among several rather than the whole product.
+
+### Added
+- **`npx @sayansr26/agent-os`** — `init`, `sync`, `check`, `detect`, `audit`,
+  `memory`. Published to npm; no install required. The name is scoped because
+  unscoped `agent-os` collides with an existing `agentos` package under npm's
+  similarity check.
+- **A canonical source** at `.agent-os/` — `config.json`, `AGENTS.md`,
+  `rules/`, `skills/` — compiled outward to each tool in its own schema.
+- **Eight compile targets.** Claude Code and Cline take `paths:` verbatim.
+  Cursor gets `.mdc` with `description`/`globs`/`alwaysApply`. Windsurf gets
+  `trigger:` and a 12,000-character cap. Antigravity gets plain Markdown plus a
+  stated intended scope, because its glob syntax is undocumented and UI-set.
+  Gemini CLI, OpenCode and Kilo have no conditional loading, so they get
+  `AGENTS.md` plus an instructions list, merged into their existing config
+  rather than overwriting it.
+- **`AGENTS.md` for everything else** — read natively by 35+ tools.
+- **Skills compiled to `.agents/skills/`**, which Cursor, Windsurf, Antigravity
+  and Gemini CLI all read, so four vendors are served by one directory. Claude
+  Code and Cline get their own copies.
+- **`check`** exits non-zero when a generated file no longer matches source, so
+  drift fails CI instead of being discovered later.
+- **A compiler self-test** (`npm test`) that scaffolds a throwaway project,
+  compiles all eight targets and asserts each tool's real schema — plus drift
+  detection and merge-not-overwrite. CI additionally installs the packed
+  tarball and runs the CLI from it, because the checkout is not what users get.
+
+### Changed
+- Repository and package renamed from `claude-agent-os` to `agent-os`.
+- Documentation is generic throughout; examples are invented.
+
+### Fixed
+- `check` reported every skill file as drifted immediately after a `sync`. Skill
+  files are read as buffers so a skill can ship a binary asset, rule files are
+  generated as strings, and the two were compared with `!==`. Comparison is now
+  per kind.
+- The audit listed `.cursor/rules/` and `.clinerules` as legacy stores to fold
+  into `CLAUDE.md` and delete, even when `agent-os` had just generated them —
+  advice that would have destroyed the compiled output. Directories whose files
+  all carry the generated banner are now reported as generated, not legacy.
+
+### Notes
+- Hooks are not compiled. Events and control protocols differ per tool with no
+  honest common denominator.
+- The memory layer stays Claude Code only — it is the only target with somewhere
+  to put it. Windsurf has native memories but no documented write path.
+- Roo Code shut down in May 2026 and is not a target. Windsurf is now Devin
+  Desktop, though its `.windsurf/` paths are unchanged.
+
 ## [0.4.0] — 2026-09-15
 
 ### Added
@@ -139,12 +191,13 @@ codebase. Smaller context is the consequence.
 Initial release: the memory layer, `feature-cartographer`, six coordinated
 agents, the session-resume hook, and the setup skill.
 
-[0.4.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.4.0
-[0.3.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.3.0
-[0.2.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.2.0
-[0.1.5]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.5
-[0.1.4]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.4
-[0.1.3]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.3
-[0.1.2]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.2
-[0.1.1]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.1
-[0.1.0]: https://github.com/sayansr26/claude-agent-os/releases/tag/v0.1.0
+[0.5.0]: https://github.com/sayansr26/agent-os/releases/tag/v0.5.0
+[0.4.0]: https://github.com/sayansr26/agent-os/releases/tag/v0.4.0
+[0.3.0]: https://github.com/sayansr26/agent-os/releases/tag/v0.3.0
+[0.2.0]: https://github.com/sayansr26/agent-os/releases/tag/v0.2.0
+[0.1.5]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.5
+[0.1.4]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.4
+[0.1.3]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.3
+[0.1.2]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.2
+[0.1.1]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.1
+[0.1.0]: https://github.com/sayansr26/agent-os/releases/tag/v0.1.0

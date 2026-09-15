@@ -4,5 +4,5 @@ contact_links:
     url: https://code.claude.com/docs/en/plugins
     about: How plugins, agents, skills and hooks work. Most "how do I" questions are answered here.
   - name: Security vulnerability
-    url: https://github.com/sayansr26/claude-agent-os/security/advisories/new
+    url: https://github.com/sayansr26/agent-os/security/advisories/new
     about: Report privately. Please do not open a public issue.
