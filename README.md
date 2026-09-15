@@ -107,17 +107,18 @@ A `SessionStart` hook prints it before you type anything:
 ```
 ## Where you left off
 
-Branch: `feat/attendance-admin`
+Branch: `feat/checkout-promo-codes`
 
 Recent commits:
-  307123c  wire attendance mock seam  (14 hours ago)
+  307123c  add promo code validation endpoint  (14 hours ago)
+  7659715  scaffold the promo code feature folder  (2 days ago)
 
 Uncommitted (3):
-   M src/features/attendance/index.themed.tsx
-  ?? src/features/attendance/services/attendance.mock.ts
+   M src/features/checkout/PromoCodeField.tsx
+  ?? src/features/checkout/services/promo.api.ts
 
-Handoff note (obsidian/session-handoff.md, today):
-  Next task: hook attendance-admin to the real endpoint.
+Handoff note (HANDOFF.md, today):
+  Next task: wire PromoCodeField to the validation endpoint.
 ```
 
 Capped at 40 lines, fails silent, never writes anything.
@@ -135,9 +136,9 @@ Instead:
 **1. The cartographer answers how it is built** — reading the architecture map first, exploring only what is missing, in *its* context window:
 
 ```
-Entry:      src/features/auth/login.tsx:24 (route /login)
-Renders:    LoginForm.themed.tsx, OtpDialog.tsx (already exists — used by password reset)
-State:      auth.slice — also read by RoleProvider, PermissionProvider
+Entry:      src/features/auth/LoginPage.tsx:24 (route /login)
+Renders:    LoginForm.tsx, OtpDialog.tsx (already exists — used by password reset)
+State:      authSlice — also read by the session provider
 Network:    services/auth.api.ts -> POST /auth/login, POST /auth/refresh
 
 Blast radius

@@ -5,3 +5,7 @@ node_modules/
 # Local Claude Code state, never committed
 .claude/settings.local.json
 .claude/agent-memory-local/
+
+# Local list of identifiers that must never be published.
+# Never committed — the terms would then be in the repo they exclude.
+.leakcheck

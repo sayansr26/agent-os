@@ -61,9 +61,8 @@ component, a route, a migration, a test — do this:
 4. **Note what varies.** If two services handle errors differently, that is not a
    convention — it is drift. Say so; do not pick a winner on the codebase's
    behalf.
-5. **Record where you saw it.** `services/ip-whitelist.api.ts` is the reference
-   shape, cite it. A future reader can re-check a cited rule; an uncited one
-   rots.
+5. **Record where you saw it.** Name the files the pattern came from. A future
+   reader can re-check a cited rule; an uncited one rots.
 
 The highest-value things to capture are the ones a newcomer gets wrong:
 
@@ -88,9 +87,9 @@ paths:
 
 # Working inside a feature
 
-Services are written like `services/ip-whitelist.api.ts` — one exported function
-per endpoint, `secureApi` for anything with a routeId, `api.direct.*` otherwise.
-Verified across ip-whitelist, attendance, and collection services, 2026-09.
+Services export one function per endpoint and go through the shared client
+wrapper, never a bare fetch. Errors surface as a typed result, not a throw.
+Verified across three services; see the ones named in `_architecture.md`.
 ```
 
 Dense agent notes, not prose. Invariants and gotchas. Skip anything a `ls` or a
