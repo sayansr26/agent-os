@@ -40,6 +40,18 @@ among several rather than the whole product.
 - Documentation is generic throughout; examples are invented.
 
 ### Fixed
+- **`init` scaffolded over projects that already had rules.** It wrote a
+  placeholder `AGENTS.md` and an `example.md` rule regardless of what was
+  there, and the next `sync` compiled the placeholder on top of the project's
+  real `AGENTS.md`. `init` now adopts what it finds — the existing `AGENTS.md`
+  and the first rules directory it recognises, `.cursor/rules/*.mdc` converted
+  back to `paths:` — and seeds `example.md` only when there was nothing to
+  adopt. A tool for stopping rule drift must not cause it.
+- **`sync` now refuses to overwrite a file it did not generate.** Generated
+  files carry a banner; anything else at a generated path is the user's own
+  work. `sync` names those files, leaves them alone and exits non-zero, with
+  `--force` as the explicit opt-out. `AGENTS.md` carries the banner too — it
+  previously did not, which is why nothing could tell it apart.
 - `check` reported every skill file as drifted immediately after a `sync`. Skill
   files are read as buffers so a skill can ship a binary asset, rule files are
   generated as strings, and the two were compared with `!==`. Comparison is now

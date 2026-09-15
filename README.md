@@ -76,6 +76,13 @@ Every command below is `npx @sayansr26/agent-os <command>`. Install it once —
 
 `--root <dir>` to target another directory, `--dry-run` to preview.
 
+**On an existing project, `init` adopts rather than scaffolds.** It takes your
+current `AGENTS.md` and the first rules directory it recognises as the source,
+so the first `sync` regenerates what you already had. **`sync` never overwrites
+a file it did not generate** — generated files carry a banner, anything else at
+that path is yours. It names those files, leaves them alone and exits 1; pass
+`--force` if you really mean to replace them.
+
 Generated files carry a banner. Edit `.agent-os/`, run `sync`, never edit the output.
 
 ---

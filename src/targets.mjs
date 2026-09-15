@@ -28,7 +28,9 @@ function agentsMd(src) {
       s.map((r) => `- \`${r.paths.join("`, `")}\` — ${r.description || r.name}`).join("\n")
     );
   }
-  return parts.filter(Boolean).join("\n\n") + "\n";
+  // The banner is what lets `sync` tell its own output from the user's file.
+  // Without it AGENTS.md is indistinguishable from hand-written work.
+  return mdHeader + parts.filter(Boolean).join("\n\n") + "\n";
 }
 
 export const TARGETS = {

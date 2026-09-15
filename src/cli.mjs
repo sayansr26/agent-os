@@ -1,9 +1,10 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { detect, summarise, TOOLS } from "./detect.mjs";
-import { load, write, readIfExists, matches, DIR } from "./source.mjs";
+import { load, write, readIfExists, matches, BANNER, DIR } from "./source.mjs";
+import { adopt } from "./adopt.mjs";
 import { compile, TARGETS } from "./targets.mjs";
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
@@ -25,6 +26,7 @@ ${bold("agent-os")} — one source of truth for AI coding agent config
 Options
   --root <dir>   project directory (default: cwd)
   --dry-run      print what would change, write nothing
+  --force        overwrite files agent-os did not generate (it refuses by default)
 `;
 
 function scaffold(root, found) {
@@ -32,6 +34,17 @@ function scaffold(root, found) {
   mkdirSync(join(root, DIR, "rules"), { recursive: true });
   if (!existsSync(join(root, DIR, "config.json")))
     write(root, `${DIR}/config.json`, JSON.stringify({ targets: present.length ? present : ["claude-code"] }, null, 2) + "\n");
+
+  // Take what the project already has as the source. Writing a placeholder over
+  // a real AGENTS.md, then compiling the placeholder back on top of it, is the
+  // exact drift this tool exists to prevent.
+  const taken = adopt(root);
+  if (taken.agents && !existsSync(join(root, DIR, "AGENTS.md")))
+    write(root, `${DIR}/AGENTS.md`, taken.agents);
+  for (const r of taken.rules)
+    if (!existsSync(join(root, DIR, "rules", `${r.name}.md`)))
+      write(root, `${DIR}/rules/${r.name}.md`, r.text);
+
   if (!existsSync(join(root, DIR, "AGENTS.md")))
     write(root, `${DIR}/AGENTS.md`, `# Project instructions
 
@@ -42,7 +55,11 @@ Keep it short. Anything that only matters for part of the tree belongs in
 \`.agent-os/rules/\` instead, where it can be scoped to the files it applies to.
 `);
   mkdirSync(join(root, DIR, "skills"), { recursive: true });
-  if (!existsSync(join(root, DIR, "rules", "example.md")))
+
+  // Only seed the placeholder when there was nothing to adopt. A project with
+  // real rules does not need an `example.md` compiled into every tool it uses.
+  const anyRule = readdirSync(join(root, DIR, "rules")).some((f) => f.endsWith(".md"));
+  if (!anyRule)
     write(root, `${DIR}/rules/example.md`, `---
 description: Conventions for the API layer
 paths:
@@ -55,7 +72,7 @@ A rule with \`paths:\` is loaded only when the agent touches a matching file, in
 every tool that supports conditional loading. Tools that do not support it get
 these as a referenced list instead of always-on text.
 `);
-  return present;
+  return { present, taken };
 }
 
 export async function main(argv) {
@@ -101,11 +118,19 @@ export async function main(argv) {
     return;
   }
 
+  let adopted = new Set();
+
   if (cmd === "init") {
     console.log(`\n${bold("agent-os init")}  ${root}\n`);
     console.log(summarise(found));
-    const present = scaffold(root, found);
-    console.log(`\n  created ${DIR}/ ${dim("(config.json, AGENTS.md, rules/example.md)")}`);
+    const { present, taken } = scaffold(root, found);
+    adopted = taken.paths;
+    if (taken.from.length) {
+      console.log(`\n  adopted into ${DIR}/ ${dim("— your existing files are now the source")}`);
+      for (const f of taken.from) console.log(`    ${f}`);
+    } else {
+      console.log(`\n  created ${DIR}/ ${dim("(config.json, AGENTS.md, rules/example.md)")}`);
+    }
     if (!present.length) console.log(`  ${dim("no tools detected — defaulting to claude-code; edit .agent-os/config.json")}`);
   }
 
@@ -142,13 +167,42 @@ export async function main(argv) {
       }
       return TARGETS[t]?.label || t;
     };
+    // Never overwrite a file this tool did not write. A generated file carries
+    // the banner; anything else at that path is the user's own work, and
+    // silently compiling over it is worse than doing nothing.
+    const force = argv.includes("--force");
+    const isOurs = (f) => {
+      const cur = readIfExists(root, f.path);
+      if (cur === null) return true;                       // nothing there yet
+      if (cur.includes(BANNER)) return true;               // we wrote it
+      if (TARGETS[f.target]?.merge) return true;           // merged in place, nothing lost
+      if (adopted.has(f.path)) return true;                // init just took this as the source
+      if (matches(root, f.path, f.content) === true) return true; // already identical
+      return false;
+    };
+
+    const blocked = [];
     for (const [t, fs_] of Object.entries(byTarget)) {
       console.log(`  ${labelFor(t).padEnd(38)} ${fs_.length} file(s)`);
       for (const f of fs_) {
+        if (!force && !isOurs(f)) { blocked.push(f.path); console.log(`    ${f.path}  ${dim("SKIPPED — not generated by agent-os")}`); continue; }
         if (!dry) write(root, f.path, f.content);
         console.log(`    ${f.path}`);
       }
     }
+
+    if (blocked.length) {
+      console.log(`\n${bold(`${blocked.length} file(s) left alone`)} because agent-os did not write them:\n`);
+      for (const b of blocked) console.log(`  ${b}`);
+      console.log(`
+Pick one:
+  · move the content into ${DIR}/ so it becomes the source, then re-run
+  · ${dim("--force")} to overwrite (the current content is lost — commit first)
+`);
+      process.exitCode = 1;
+      return;
+    }
+
     console.log(`\n${dim("Generated files carry a banner. Edit .agent-os/ and re-run sync; never edit them directly.")}\n`);
     return;
   }
