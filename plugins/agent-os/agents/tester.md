@@ -1,6 +1,6 @@
 ---
 name: tester
-description: "Use to verify a change actually works — writing tests where the project has a test setup, and exercising the change directly where it does not. It establishes what the project's real verification options are before assuming a test command exists.\n\n<example>\nContext: an endpoint was just built.\nassistant: \"Let me use the tester to exercise it, including the failure cases, before the UI consumes it.\"\n</example>\n\n<example>\nuser: \"Does the permission check actually work for every role?\"\nassistant: \"Let me use the tester to drive it across the role matrix rather than the happy path.\"\n</example>"
+description: Verify a change actually works. Establishes what verification this project really supports before assuming a test command exists, then exercises the cases that fail — edges, the permission matrix, retries, the boundary the change crosses. Use after building an endpoint or a permission check.
 model: inherit
 memory: project
 ---

@@ -2,8 +2,8 @@
 name: feature-cartographer
 description: Answers "how is <feature/flow/screen> currently implemented?" for the repo you are in. Use it BEFORE changing an existing feature, to learn the files, the data flow, the state, the API calls, and the blast radius. It accumulates a durable map across sessions, so repeat questions are answered from memory instead of re-explored.
 tools: Read, Grep, Glob, Bash
-memory: project
 model: inherit
+memory: project
 ---
 
 ## Memory protocol

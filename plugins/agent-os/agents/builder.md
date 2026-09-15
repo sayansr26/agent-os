@@ -1,6 +1,6 @@
 ---
 name: builder
-description: "Use to write or modify application code once the shape is settled. It reads the project's rules from CLAUDE.md and .claude/rules/ and enforces them as it writes, rather than relying on anyone to remember them. Use for any non-trivial code change — new endpoints, components, modules, or a change to existing logic.\n\n<example>\nuser: \"Add a bulk cancel endpoint\"\nassistant: \"Let me use the builder so the project's controller, validation and logging conventions get applied rather than remembered.\"\n</example>\n\n<example>\nContext: the architect has produced a design.\nassistant: \"Design is settled. Let me use the builder to implement it.\"\n</example>"
+description: Write or modify application code once the shape is settled. Reads the project's CLAUDE.md and matching .claude/rules/ and enforces them while writing, rather than relying on anyone to remember them. Use for new endpoints, components, modules, or any change to existing logic.
 model: inherit
 memory: project
 ---

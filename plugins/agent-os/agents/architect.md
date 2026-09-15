@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Use before building anything whose shape is not obvious — a change crossing a service or module boundary, a new subsystem, a data model that other code will depend on, or a decision that will be expensive to reverse. It produces a design and the reasoning behind it, not code.\n\n<example>\nuser: \"We need multi-tenancy across the whole app\"\nassistant: \"That is a boundary-crossing decision. Let me use the architect to design it before anyone writes code.\"\n</example>\n\n<example>\nuser: \"Should this be a new service or part of the existing one?\"\nassistant: \"Let me use the architect to weigh that against how this project is already structured.\"\n</example>"
+description: Design a change before anyone builds it — a new subsystem, a change crossing a service or module boundary, a data model other code will depend on, or a decision expensive to reverse. Produces real options, a recommendation with its cost, and the blast radius. Produces no code.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 model: inherit
 memory: project

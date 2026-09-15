@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Use to audit a change before it is called complete — after implementing a feature, before opening a PR, or when inheriting unfamiliar code. It checks correctness, the project's own mandatory rules, security, and the failure modes that linters do not catch.\n\n<example>\nContext: builder has finished a feature.\nassistant: \"Implementation is done. Let me use the reviewer before we call it complete.\"\n</example>\n\n<example>\nuser: \"Is this module safe to change?\"\nassistant: \"Let me use the reviewer to audit it first.\"\n</example>"
+description: Audit a change before it is called done — correctness at the edges, the project's own mandatory rules, security, and the failure modes a linter cannot see. Use after implementing a feature, before opening a PR, or when inheriting unfamiliar code.
 tools: Read, Grep, Glob, Bash
 model: inherit
 memory: project

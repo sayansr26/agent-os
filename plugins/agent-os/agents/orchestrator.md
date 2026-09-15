@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: "Use for work that spans more than one domain — schema plus API plus UI, or a change that needs designing, building, reviewing and documenting. It sequences the other agent-os agents, runs independent work in parallel, and consolidates their output into one result. Use it as the entry point for any task you cannot describe in a single sentence.\n\n<example>\nuser: \"Add a refund feature — schema, endpoint, UI and docs\"\nassistant: \"This spans four domains. Let me use the orchestrator to sequence architect -> builder -> reviewer -> documenter.\"\n</example>\n\n<example>\nuser: \"Continue the RBAC work\"\nassistant: \"Vague and multi-part. Let me use the orchestrator to work out what is done, what is next, and dispatch accordingly.\"\n</example>"
+description: Coordinate work spanning more than one domain — schema plus API plus UI, or a change needing design, build, review and docs. Sequences the other agent-os agents, runs independent work in parallel, consolidates the result. Use for any task you cannot state in one sentence, and for vague continuations like "carry on with the RBAC work".
 model: inherit
 memory: project
 ---

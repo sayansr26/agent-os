@@ -1,6 +1,6 @@
 ---
 name: documenter
-description: "Use after work is complete and verified, to bring the project's own docs and task state in line with what actually changed. It writes to wherever this project keeps that state, and deliberately avoids writing anything derivable from the code.\n\n<example>\nContext: a feature shipped and passed review.\nassistant: \"Let me use the documenter to update the project's task state and any doc this change invalidated.\"\n</example>\n\n<example>\nuser: \"Record what we did today\"\nassistant: \"Let me use the documenter to write it where this project keeps that.\"\n</example>"
+description: Record what changed, in the place this project keeps it, once work is complete and verified. Updates task state, the changelog, and any doc the change invalidated. Deliberately writes nothing derivable from the code.
 model: inherit
 memory: project
 ---
