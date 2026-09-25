@@ -14,6 +14,11 @@ not create a second file under a different name.
 
 When you write:
 
+- **Write only directly inside your memory directory** — flat, no
+  subfolders. It already is `<project>/.claude/agent-memory/<your name>/`, so a
+  path like `.claude/agent-memory/...` written relative to it nests a second
+  copy of the tree inside your memory. Use the absolute path your memory
+  directory was given, plus the file name.
 - **One topic file per subject**, named kebab-case: `<subject-slug>.md`. Never
   the `snake_case` variant, never a synonym for a file that already exists.
   `defect-patterns.md` and `defect_patterns.md` are the same subject and must not
@@ -86,5 +91,5 @@ in `CLAUDE.md` or a rule file, anything derivable by reading the code, and
 anything about this specific task.
 
 If you learned something that belongs in the project's own rules rather than your
-private memory, say so in your reply and name the rule file — do not write to
-`.claude/rules/` yourself. The main conversation owns those.
+private memory, say so in your reply and name the rule file — `.agent-os/rules/<name>.md` when the project has `.agent-os/` (the `.claude/rules/` copies are generated and the next sync reverts edits to them), otherwise `.claude/rules/<name>.md`. Do not write
+rules yourself; the main conversation owns those.

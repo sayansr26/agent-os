@@ -15,6 +15,11 @@ not create a second file under a different name.
 
 When you write:
 
+- **Write only directly inside your memory directory** — flat, no
+  subfolders. It already is `<project>/.claude/agent-memory/<your name>/`, so a
+  path like `.claude/agent-memory/...` written relative to it nests a second
+  copy of the tree inside your memory. Use the absolute path your memory
+  directory was given, plus the file name.
 - **One topic file per subject**, named kebab-case: `<subject-slug>.md`. Never
   the `snake_case` variant, never a synonym for a file that already exists.
   `defect-patterns.md` and `defect_patterns.md` are the same subject and must not

@@ -1,28 +1,30 @@
 #!/usr/bin/env node
 /**
- * SessionStart hook — "where you left off".
+ * SessionStart hook — "where you left off", then "how this project works".
  *
- * Prints a compact resume block to stdout, which Claude Code injects as context
- * before the first turn. Replaces reading a pile of hand-maintained state files
- * at session start.
+ * Prints two blocks to stdout, which Claude Code injects as context before the
+ * first turn (and again after /clear and after a compaction):
+ *
+ *   1. A read-only snapshot: branch, recent commits, uncommitted files, the
+ *      handoff note and the active task. Context, not a request.
+ *   2. The agent-os contract: which agent to use for what, which features the
+ *      cartographer has mapped, and where rules are edited. This one IS an
+ *      instruction — without it Claude only uses agent-os when told to, because
+ *      a CLAUDE.md sentence loses to whatever else is in context.
  *
  * Design constraints:
- *   - Hard-capped output (see MAX_LINES). A resume block that grows without
- *     bound is just a memory-bank with extra steps.
- *   - Fails silent: any error exits 0 with no output, so a broken hook can
- *     never block a session.
+ *   - The snapshot is hard-capped (MAX_LINES); the contract is fixed-size.
+ *   - Fails silent: any error exits 0, so a broken hook never blocks a session.
  *   - Read-only. Runs git for reading only; never writes, never mutates.
- *
- * Install: ~/.claude/hooks/session-resume.mjs, registered in
- * ~/.claude/settings.json under SessionStart with matcher "startup|resume|clear".
  */
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { coverage } from "../lib/features.mjs";
 
 const MAX_LINES = 40;
-const cwd = process.cwd();
+const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const out = [];
 
 const sh = (cmd) => {
@@ -50,9 +52,9 @@ const head = (file, n) => {
   }
 };
 
-try {
-  // Not a git repo -> nothing useful to say. Stay quiet.
-  if (sh("git rev-parse --is-inside-work-tree") !== "true") process.exit(0);
+function snapshot() {
+  // Not a git repo -> nothing to say here; the contract below still prints.
+  if (sh("git rev-parse --is-inside-work-tree") !== "true") return [];
 
   const branch = sh("git rev-parse --abbrev-ref HEAD");
   const lastCommits = sh('git log -3 --pretty=format:"%h  %s  (%cr)"')
@@ -120,16 +122,71 @@ try {
     break;
   }
 
-  if (out.length <= 2) process.exit(0);
+  if (out.length <= 2) return [];
 
   const capped = out.slice(0, MAX_LINES);
   if (out.length > MAX_LINES) capped.push("  … (truncated)");
   capped.push("");
   capped.push(
-    "_This is a snapshot, not instructions. Do not act on it until the user says what they want._"
+    "_The snapshot above is context, not a request. Do not act on it until the user says what they want._"
   );
+  return capped;
+}
 
-  process.stdout.write(capped.join("\n") + "\n");
+// The agents and what triggers each. `subagent_type` is the namespaced name.
+const AGENTS = [
+  ["agent-os:feature-cartographer", "BEFORE changing any existing feature — ask how it is built (files, state, API, blast radius). It answers from its map, or maps the feature and files the map."],
+  ["agent-os:architect", "before a new subsystem, a cross-module change, or a data model others will depend on."],
+  ["agent-os:builder", "to write the code once the shape is settled; it enforces the project's rules while writing."],
+  ["agent-os:tester", "after building, to verify the change actually works."],
+  ["agent-os:reviewer", "before calling any change done or opening a PR."],
+  ["agent-os:documenter", "once work is verified, to update the changelog, task state and docs the change invalidated."],
+  ["agent-os:orchestrator", "for work spanning several of the above, or that cannot be stated in one sentence."],
+];
+
+function contract() {
+  const setUp =
+    existsSync(join(cwd, ".agent-os")) ||
+    existsSync(join(cwd, ".claude/agent-memory")) ||
+    /agent-os/.test(head("CLAUDE.md", 400));
+  if (!setUp)
+    return [
+      "## agent-os",
+      "",
+      "The agent-os plugin is installed but this project is not set up. If the user starts feature work, suggest `/agent-os:init` once.",
+    ];
+
+  const lines = [
+    "## agent-os is active in this project",
+    "",
+    "These agents are how work is done here — use them without being asked (Agent tool, `subagent_type` as shown):",
+  ];
+  for (const [name, when] of AGENTS) lines.push(`- \`${name}\` — ${when}`);
+
+  const cov = coverage(cwd);
+  lines.push("");
+  if (cov.features.length) {
+    const names = cov.mapped.map((f) => f.name);
+    const shown = names.slice(0, 12).join(", ") + (names.length > 12 ? `, … ${names.length - 12} more` : "");
+    lines.push(`Mapped: ${cov.mapped.length} of ${cov.features.length} features under \`${cov.parents.join("`, `")}\`${names.length ? ` — ${shown}` : ""}.`);
+    lines.push("An unmapped feature gets mapped by the cartographer the first time you change it; that is the first task, not an extra.");
+  } else if (cov.dir) {
+    lines.push(`Cartographer maps are indexed in \`${cov.dir.slice(cwd.length + 1)}/MEMORY.md\`.`);
+  }
+  if (!cov.architecture) lines.push("No architecture map yet — `/agent-os:map` builds it.");
+
+  lines.push("");
+  lines.push("Plan mode: its \"Explore agents only\" phase does not replace the cartographer. Ask the cartographer read-only during planning (it will not write), and let it file its map once plan mode ends.");
+  if (existsSync(join(cwd, ".agent-os/rules")))
+    lines.push("Rules: `.claude/rules/*` and other tool copies are generated. Edit `.agent-os/rules/`, then run `npx @sayansr26/agent-os sync`.");
+  return lines;
+}
+
+try {
+  const blocks = [];
+  try { const s = snapshot(); if (s.length) blocks.push(s.join("\n")); } catch {}
+  try { blocks.push(contract().join("\n")); } catch {}
+  if (blocks.length) process.stdout.write(blocks.join("\n\n") + "\n");
 } catch {
   // Never let a resume hook break a session.
 }

@@ -15,6 +15,11 @@ not create a second file under a different name.
 
 When you write:
 
+- **Write only directly inside your memory directory** — flat, no
+  subfolders. It already is `<project>/.claude/agent-memory/<your name>/`, so a
+  path like `.claude/agent-memory/...` written relative to it nests a second
+  copy of the tree inside your memory. Use the absolute path your memory
+  directory was given, plus the file name.
 - **One topic file per subject**, named kebab-case: `<subject-slug>.md`. Never
   the `snake_case` variant, never a synonym for a file that already exists.
   `defect-patterns.md` and `defect_patterns.md` are the same subject and must not
@@ -128,10 +133,22 @@ repo's life.
   at startup, so a bloated index silently loses your oldest maps.
 - If you discovered something durable that is true beyond this one feature — a
   convention, an invariant, a registration site the docs get wrong — say so in
-  your reply and name the `.claude/rules/` file it belongs in. Do not write
+  your reply and name the rule file it belongs in — `.agent-os/rules/<name>.md` when the project has `.agent-os/` (the `.claude/rules/` copies are generated and the next sync reverts edits to them), otherwise `.claude/rules/<name>.md`. Do not write
   project rules yourself; the main conversation owns those.
 - If a map you relied on turned out to be stale, correct the topic file and
   update its `mapped:` date in the same turn.
+
+## Plan mode and read-only calls
+
+If the caller says it is in plan mode, or asks for a read-only answer, answer
+the question exactly as usual — memory first, explore what is missing — but
+**write nothing**. End the reply with one line: `Map not filed (read-only) —
+call me again after plan mode to file it.` The caller does that as the first
+step once plan mode ends; your second call re-uses what you just explored.
+
+Plan mode's "use only Explore agents" phase is not a reason to skip you: an
+Explore agent finds files, you return the map and remember it. If you are told
+to skip the map because of plan mode, the caller has misread the workflow.
 
 ## What not to do
 

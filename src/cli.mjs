@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { detect, summarise, TOOLS } from "./detect.mjs";
 import { load, write, readIfExists, matches, BANNER, DIR } from "./source.mjs";
 import { adopt } from "./adopt.mjs";
-import { installPlugin, MARKETPLACE, MARKETPLACE_NAME, PLUGIN } from "./plugin.mjs";
-import { ensureTodoEnv, ensureTaskRule, TODO_ENV } from "./claude-setup.mjs";
+import { ensurePlugin, MARKETPLACE_NAME, PLUGIN } from "./plugin.mjs";
+import { setupState, describeState } from "../plugins/agent-os/skills/init/scripts/state.mjs";
+import { applyScope, describe } from "./claude-setup.mjs";
+import { createInterface } from "node:readline/promises";
 import { compile, TARGETS } from "./targets.mjs";
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
@@ -15,12 +17,14 @@ const dim = (s) => `\x1b[2m${s}\x1b[0m`;
 const USAGE = `
 ${bold("agent-os")} — one source of truth for AI coding agent config
 
-  agent-os init      detect your tools, create .agent-os/, compile
+  agent-os init      set up a fresh project, or repair and update an existing one
   agent-os sync      recompile after editing .agent-os/
   agent-os check     verify nothing drifted (exit 1 if it has) — for CI
   agent-os detect    list which tools this project is set up for
   agent-os audit     inspect the project's context layer and report findings
   agent-os memory    inspect and health-check every memory store
+  agent-os settings  preview git write protection + task tools for Claude Code
+                     (--scope project|user|both, --apply to write)
 
   Without a global install, prefix any of these with
   ${dim("npx @sayansr26/agent-os")}
@@ -29,7 +33,9 @@ Options
   --root <dir>   project directory (default: cwd)
   --dry-run      print what would change, write nothing
   --force        overwrite files agent-os did not generate (it refuses by default)
-  --no-plugin    skip installing the Claude Code plugin during init
+  --no-plugin    skip installing or updating the Claude Code plugin during init
+  --global       init: also write ~/.claude settings without asking
+  --no-global    init: leave ~/.claude alone
 `;
 
 function scaffold(root, found) {
@@ -116,6 +122,13 @@ export async function main(argv) {
     return;
   }
 
+  if (cmd === "settings") {
+    const i = argv.indexOf("--scope");
+    runScript("plugins/agent-os/skills/init/scripts/settings.mjs",
+      ["--root", root, "--scope", i === -1 ? "both" : argv[i + 1], ...(argv.includes("--apply") ? ["--apply"] : [])]);
+    return;
+  }
+
   if (cmd === "memory") {
     runScript("plugins/agent-os/skills/memory/scripts/memory.mjs", argv.includes("--stale") ? [root, "--stale"] : [root]);
     return;
@@ -123,14 +136,28 @@ export async function main(argv) {
 
   let adopted = new Set();
 
+  let before = null;
   if (cmd === "init") {
     console.log(`\n${bold("agent-os init")}  ${root}\n`);
+    // Decide fresh vs repair before touching anything, and say which, so a
+    // second run on a set-up project reads as a repair rather than a re-init.
+    before = setupState(root);
+    for (const l of describeState(before)) console.log(`  ${l}`);
+    console.log({
+      fresh: `\n  ${dim("Fresh setup: creating everything.")}`,
+      repair: `\n  ${dim("Existing setup: fixing the items marked MISSING, leaving the rest as it is.")}`,
+      healthy: `\n  ${dim("Setup is complete: re-syncing and checking the plugin for updates.")}`,
+    }[before.status]);
+    console.log("");
     console.log(summarise(found));
+    const hadSource = existsSync(join(root, DIR));
     const { present, taken } = scaffold(root, found);
     adopted = taken.paths;
     if (taken.from.length) {
       console.log(`\n  adopted into ${DIR}/ ${dim("— your existing files are now the source")}`);
       for (const f of taken.from) console.log(`    ${f}`);
+    } else if (hadSource) {
+      console.log(`\n  kept ${DIR}/ ${dim("— already the source; nothing re-scaffolded")}`);
     } else {
       console.log(`\n  created ${DIR}/ ${dim("(config.json, AGENTS.md, rules/example.md)")}`);
     }
@@ -214,36 +241,52 @@ Pick one:
     if (cmd === "init" && targets.includes("claude-code")) {
       console.log(`\n${bold("Claude Code setup")}\n`);
 
-      const e = ensureTodoEnv(root, { dry });
-      const eMsg = {
-        added: `  ${e.rel}  ${dim(`env.${TODO_ENV} = "1"`)}`,
-        present: `  ${e.rel}  ${dim(`env.${TODO_ENV} already set`)}`,
-        conflict: `  ${e.rel}  ${dim(`env.${TODO_ENV} is "${e.current}" — left as you set it`)}`,
-        invalid: `  ${e.rel}  ${dim("is not valid JSON — left alone, fix it and re-run")}`,
-      }[e.status];
-      console.log(eMsg);
+      // Project scope always: it travels with the repo. User scope protects
+      // every other project on the machine too, so it is asked once rather
+      // than assumed — unless --global / --no-global already answered.
+      for (const l of describe(applyScope("project", root, { dry }), { dry })) console.log(`  ${l}`);
 
-      const t = ensureTaskRule(root, { dry });
-      const tMsg = {
-        added: `  ${t.rel}  ${dim(`task-tracking rule added under ${t.section}`)}`,
-        present: `  ${t.rel}  ${dim("task-tracking rule already there")}`,
-        "no-file": `  ${t.rel}  ${dim("absent — run /agent-os:init inside Claude Code to build it")}`,
-      }[t.status];
-      console.log(tMsg);
+      let global = argv.includes("--global") ? true : argv.includes("--no-global") ? false : null;
+      if (global === null && !dry && process.stdin.isTTY && process.stdout.isTTY) {
+        console.log("");
+        for (const l of describe(applyScope("user", root, { dry: true }), { dry: true })) console.log(`  ${l}`);
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        const a = (await rl.question(`\n  Apply the same to ~/.claude (every project on this machine)? [Y/n] `)).trim().toLowerCase();
+        rl.close();
+        global = a === "" || a === "y" || a === "yes";
+      }
+      if (global) {
+        console.log("");
+        for (const l of describe(applyScope("user", root, { dry }), { dry })) console.log(`  ${l}`);
+      } else if (global === null) {
+        console.log(`\n  ${dim("~/.claude left alone (not a terminal). To protect every project:")}`);
+        console.log(`  ${dim("npx @sayansr26/agent-os settings --scope user --apply")}`);
+      }
     }
 
     if (cmd === "init" && targets.includes("claude-code") && !argv.includes("--no-plugin")) {
       console.log(`\n${bold("Claude Code plugin")} ${dim(`${PLUGIN}@${MARKETPLACE_NAME}`)}\n`);
-      const r = installPlugin({ dry });
+      const r = ensurePlugin({ root, dry });
       for (const line of r.done) console.log(`  ${dim(line)}`);
-      if (r.ok && r.reason === "installed") {
-        console.log(`\n  installed at project scope ${dim("— .claude/settings.json, so it travels with the repo")}`);
-        console.log(`  ${dim("restart Claude Code, or /reload-plugins, then run /agent-os:init")}`);
-      } else if (!r.ok) {
-        console.log("");
-        for (const line of r.hint) console.log(`  ${line}`);
-      }
+      if (r.ok) console.log({
+        installed: `\n  installed ${r.to || ""} at project scope ${dim("— .claude/settings.json, so it travels with the repo")}`,
+        updated: `\n  updated ${r.from} → ${r.to}`,
+        current: `\n  already the latest (${r.to})`,
+        "dry-run": `\n  ${dim(r.from ? `installed: ${r.from} — would refresh and update` : "not installed — would install")}`,
+      }[r.reason]);
+      for (const line of r.hint) console.log(`  ${r.ok ? dim(line) : line}`);
+      if (r.reason === "installed" || r.reason === "updated")
+        console.log(`  ${dim("restart Claude Code, or /reload-plugins, to load it")}`);
       console.log(`\n  ${dim("--no-plugin skips this")}`);
+    }
+
+    if (cmd === "init" && !dry) {
+      const after = setupState(root);
+      console.log(`\n${bold("Result")}  ${before.status} → ${after.status}`);
+      if (after.missing.length) {
+        console.log(dim("  still to do:"));
+        for (const i of after.missing) console.log(`    ${i.label}  → ${i.fix}`);
+      }
     }
     console.log("");
     return;

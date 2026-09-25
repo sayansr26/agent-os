@@ -8,6 +8,12 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const PKG = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+// Every child inherits this, so nothing here can ever touch the real ~/.claude.
+const HOME = mkdtempSync(join(tmpdir(), "agent-os-home-"));
+process.env.CLAUDE_CONFIG_DIR = HOME;
+const PLUGIN = join(PKG, "plugins/agent-os");
+const node = (script, args, opts = {}) =>
+  spawnSync(process.execPath, [join(PLUGIN, script), ...args], { encoding: "utf8", ...opts });
 const cli = (args, cwd) => spawnSync(process.execPath, [join(PKG, "bin/agent-os.mjs"), ...args, "--root", cwd], { encoding: "utf8" });
 let fail = 0;
 const ok = (c, m) => { console.log(`  ${c ? "ok  " : "FAIL"} ${m}`); if (!c) fail++; };
@@ -85,13 +91,14 @@ try {
     ok(existsSync(join(r2, ".agent-os/rules/theming.md")), "existing .claude/rules/ are adopted");
     ok(!existsSync(join(r2, ".agent-os/rules/example.md")), "no example.md when real rules were adopted");
     ok(!existsSync(join(r2, ".claude/rules/example.md")), "no example.md compiled into the project");
-    ok(!i.stdout.includes("Claude Code plugin"), "--no-plugin skips the plugin install");
+    ok(!i.stdout.includes("--no-plugin skips this"), "--no-plugin skips the plugin install");
 
     // init offers the plugin when not told otherwise; --dry-run proves the
     // commands without running them against the machine's real config.
     const r4 = mkdtempSync(join(tmpdir(), "agent-os-plug-"));
     const pi = cli(["init", "--dry-run"], r4);
-    ok(pi.stdout.includes("Claude Code plugin"), "init sets up the Claude Code plugin by default");
+    ok(pi.stdout.includes("--no-plugin skips this"), "init sets up the Claude Code plugin by default");
+    ok(pi.stdout.includes("SETUP  FRESH"), "init on an empty project reports a fresh setup");
     ok(/marketplace add sayansr26\/agent-os|plugin marketplace add|not on PATH/.test(pi.stdout),
        "init names the marketplace step or says why it could not run it");
     rmSync(r4, { recursive: true, force: true });
@@ -129,6 +136,20 @@ try {
     ok(st.env.CLAUDE_CODE_ENABLE_TODO_TOOLS === "1", "todo tools enabled in project settings");
     ok(st.env.FOO === "bar", "existing env keys preserved");
     ok(st.permissions?.deny?.[0] === "Bash(git push *)", "existing permissions preserved");
+    ok(st.permissions.deny.length === 42, "git write protection merged into project settings, no duplicate push rule");
+    ok(!existsSync(join(HOME, "settings.json")), "without --global (and no terminal) ~/.claude is left alone");
+    ok(!existsSync(join(r5, ".claude/settings.json.agent-os.bak")), "no backup litter inside the project");
+
+    const again = cli(["init", "--no-plugin", "--global"], r5).stdout;
+    ok(again.includes("SETUP  REPAIR") && again.includes("MISSING ~/.claude/settings.json git write protection"),
+       "init on a set-up project reports a repair and names what is missing");
+    ok(again.includes("kept .agent-os/"), "repair keeps the existing source instead of re-scaffolding");
+    const us = JSON.parse(readFileSync(join(HOME, "settings.json"), "utf8"));
+    ok(us.permissions.deny.includes("Bash(git commit *)") && us.env.CLAUDE_CODE_ENABLE_TODO_TOOLS === "1",
+       "--global writes git protection and task tools to ~/.claude/settings.json");
+    ok(readFileSync(join(HOME, "CLAUDE.md"), "utf8").includes("TaskCreate"), "--global adds the task rule to ~/.claude/CLAUDE.md");
+    cli(["init", "--no-plugin", "--global"], r5);
+    ok(JSON.parse(readFileSync(join(HOME, "settings.json"), "utf8")).permissions.deny.length === 42, "second --global run adds nothing");
 
     const cm = readFileSync(join(r5, "CLAUDE.md"), "utf8");
     ok(cm.includes("TaskCreate / TaskUpdate"), "task-tracking rule added to CLAUDE.md");
@@ -155,13 +176,51 @@ try {
     rmSync(r6, { recursive: true, force: true });
   }
 
+  console.log("\n  plugin hooks");
+  {
+    const r7 = mkdtempSync(join(tmpdir(), "agent-os-hooks-"));
+    const mem = join(r7, ".claude/agent-memory/agent-os-feature-cartographer");
+    mkdirSync(mem, { recursive: true });
+    for (const f of ["billing", "orders", "search"]) mkdirSync(join(r7, "src/features", f), { recursive: true });
+    writeFileSync(join(mem, "_architecture.md"), "# Architecture\n");
+    writeFileSync(join(mem, "billing.md"), "---\nmapped: 2026-01-01\nentry: src/features/billing/index.ts\n---\n# billing\n");
+    writeFileSync(join(mem, "MEMORY.md"), "- billing — src/features/billing — mapped 2026-01-01\n");
+    mkdirSync(join(r7, ".agent-os/rules"), { recursive: true });
+    writeFileSync(join(r7, ".agent-os/rules/api.md"), '---\npaths:\n  - "src/**"\n---\n\nSource body.\n');
+    mkdirSync(join(r7, ".claude/rules"), { recursive: true });
+    writeFileSync(join(r7, ".claude/rules/api.md"), "---\n---\n\n<!-- agent-os: generated from .agent-os/ — edit the source -->\nEdited in place.\n");
+    const env = { ...process.env, CLAUDE_PROJECT_DIR: r7 };
+
+    const start = node("hooks/session-resume.mjs", [], { cwd: r7, env }).stdout;
+    ok(start.includes("agent-os is active") && start.includes("agent-os:feature-cartographer"), "session start announces the agents");
+    ok(start.includes("Mapped: 1 of 3 features") && start.includes("billing"), "session start says what is mapped");
+
+    const run = `selftest-${process.pid}-${Date.now()}`;
+    const edit = (file, session = run) => node("hooks/pre-edit.mjs", [], {
+      env, input: JSON.stringify({ session_id: session, cwd: r7, tool_input: { file_path: join(r7, file) } }),
+    }).stdout;
+    const denied = edit(".claude/rules/api.md");
+    ok(denied.includes('"deny"') && denied.includes(".agent-os/rules/api.md"), "edit to a generated rule is blocked, source named");
+    ok(edit("src/features/orders/a.ts").includes("no cartographer map"), "first edit to an unmapped feature reminds");
+    ok(edit("src/features/orders/b.ts") === "", "reminder shows once per feature per session");
+    ok(edit("src/features/billing/a.ts") === "", "mapped feature stays silent");
+    ok(edit("src/lib/x.ts") === "", "non-feature path stays silent");
+
+    mkdirSync(join(mem, ".claude/agent-memory"), { recursive: true });
+    const audit = node("skills/init/scripts/audit.mjs", [r7]).stdout;
+    ok(/api\.md was edited in place/.test(audit), "audit flags a generated rule that drifted from its source");
+    ok(audit.includes("folder inside agent memory"), "audit flags a nested folder in agent memory");
+    ok(audit.includes("1 of 3 (33%)"), "audit reports map coverage, not just that a folder exists");
+    rmSync(r7, { recursive: true, force: true });
+  }
+
   console.log("\n  merge, not overwrite");
   writeFileSync(join(root, "opencode.json"), JSON.stringify({ model: "anthropic/x", instructions: ["KEEP.md"] }, null, 2));
   cli(["sync"], root);
   const oc = JSON.parse(read("opencode.json"));
   ok(oc.model === "anthropic/x", "existing keys preserved");
   ok(oc.instructions.includes("KEEP.md"), "existing instructions preserved");
-} finally { rmSync(root, { recursive: true, force: true }); }
+} finally { rmSync(root, { recursive: true, force: true }); rmSync(HOME, { recursive: true, force: true }); }
 
 console.log(`\n${fail ? `FAILED (${fail})` : "PASSED"}\n`);
 process.exit(fail ? 1 : 0);

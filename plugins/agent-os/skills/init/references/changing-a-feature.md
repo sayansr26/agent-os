@@ -41,6 +41,13 @@ That last line is the whole argument for this step. A cold grep for `login` woul
 not have found the OTP dialog that already exists — and you would have built a
 second one.
 
+**In plan mode** the cartographer still comes first — plan mode's "Explore
+agents only" phase is about not writing code, not about skipping the map. Ask it
+read-only (*"read-only, plan mode: how is the login flow built?"*); it answers
+and files nothing. The first step after plan mode ends is to call it again to
+file the map. If the feature has no map at all and the user would rather not
+wait, `/agent-os:map <feature>` before planning does the same job.
+
 ## Step 2 — Find the nearest precedent
 
 Before designing anything, ask what this codebase already did that resembles the

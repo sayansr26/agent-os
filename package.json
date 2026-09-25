@@ -1,6 +1,6 @@
 {
   "name": "@sayansr26/agent-os",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "One source of truth for AI coding agent config. Write your rules once; compile them to Claude Code, Cursor, Cline, Windsurf, Antigravity, Gemini CLI, OpenCode and Kilo.",
   "keywords": [
     "ai",

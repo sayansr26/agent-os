@@ -14,6 +14,11 @@ not create a second file under a different name.
 
 When you write:
 
+- **Write only directly inside your memory directory** — flat, no
+  subfolders. It already is `<project>/.claude/agent-memory/<your name>/`, so a
+  path like `.claude/agent-memory/...` written relative to it nests a second
+  copy of the tree inside your memory. Use the absolute path your memory
+  directory was given, plus the file name.
 - **One topic file per subject**, named kebab-case: `<subject-slug>.md`. Never
   the `snake_case` variant, never a synonym for a file that already exists.
   `defect-patterns.md` and `defect_patterns.md` are the same subject and must not
@@ -48,7 +53,7 @@ fresh one. Before writing anything, ask where it belongs, and put it only there:
 | Kind of fact | Where |
 |---|---|
 | True in every session, every file | project `CLAUDE.md` |
-| Durable but scoped to some files | `.claude/rules/<topic>.md`, with `paths:` |
+| Durable but scoped to some files | `.agent-os/rules/<topic>.md` with `paths:`, then `npx @sayansr26/agent-os sync` — or `.claude/rules/<topic>.md` in a project with no `.agent-os/`. Never edit a file carrying the agent-os generated banner. |
 | Derivable by reading the code | **nowhere** — do not write it down |
 | What changed, when, and why | the changelog / implementation log |
 | A decision and its reasoning | an ADR, if the project keeps them |

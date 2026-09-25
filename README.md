@@ -73,16 +73,25 @@ Every command below is `npx @sayansr26/agent-os <command>`. Install it once —
 | `detect` | Show which tools this project is set up for |
 | `audit` | Inspect the context layer and report findings |
 | `memory` | Inspect and health-check every memory store |
+| `settings` | Git write protection + task tools for Claude Code (`--scope project\|user\|both`, `--apply`) |
 
 `--root <dir>` to target another directory, `--dry-run` to preview.
 
+**`init` is safe to re-run.** It first reports the setup as `FRESH`,
+`REPAIR` (with each missing item) or `HEALTHY`, fixes only what is missing, and
+brings the Claude Code plugin to the latest version — installing it, enabling
+it, or refreshing the marketplace and running `claude plugin update`.
+`/agent-os:init` inside Claude Code reads the same state.
+
 **`init` sets up Claude Code completely.** Beyond the rules it installs the
-plugin — agents, skills, per-agent memory, session hook — with
-`claude plugin marketplace add` and `claude plugin install --yes`, enables the
-task tools in `.claude/settings.json`, and adds the task-tracking rule to
-`CLAUDE.md` if it is not already there. All of it at **project scope**, so the
-setup travels with the repo and nothing writes to `~/.claude/`. `--no-plugin`
-skips the plugin step. Every other detected tool gets its rules in its own
+plugin — agents, skills, per-agent memory, hooks — with
+`claude plugin marketplace add` and `claude plugin install --yes`, and writes
+the settings: git write-protection deny rules and the task tools in
+`.claude/settings.json`, plus the task-tracking rule in `CLAUDE.md`. It then
+asks once whether to apply the same to `~/.claude/` so every project on the
+machine is protected (`--global` / `--no-global` answer in advance). Every
+write merges into what is there; changed `~/.claude` files are backed up to
+`*.agent-os.bak`. `--no-plugin` skips the plugin step. Every other detected tool gets its rules in its own
 schema; the plugin layer is Claude Code only because no other tool has anywhere
 to put it.
 
@@ -111,7 +120,7 @@ Being straight about this matters more than the feature list.
 
 ## The Claude Code plugin
 
-The deeper context-engineering work — the architecture map, seven coordinated agents, per-agent memory, the session-resume hook — ships as a Claude Code plugin in this repo:
+The deeper context-engineering work — the architecture map, seven coordinated agents, per-agent memory, and the hooks that make Claude use them — ships as a Claude Code plugin in this repo:
 
 ```
 /plugin marketplace add sayansr26/agent-os
@@ -119,6 +128,17 @@ The deeper context-engineering work — the architecture map, seven coordinated 
 ```
 
 That's where the memory layer lives, because Claude Code is currently the only tool with somewhere to put it. The CLI is the cross-tool layer beneath it.
+
+Two hooks make the agents part of every session rather than something you have to ask for:
+
+- **SessionStart** (startup, resume, clear, compact) — prints where you left off, then which agent to use for what, which features the cartographer has mapped, and the plan-mode rule.
+- **PreToolUse on Edit/Write** — blocks edits to files generated from `.agent-os/` (the next sync would revert them) and names the source to edit; the first edit to an unmapped feature adds a one-time note to ask the cartographer first.
+
+Feature directories default to the first of `src/features`, `src/modules`, `app/features`, `features`, `modules`. Override in `.agent-os/config.json`:
+
+```json
+{ "targets": ["claude-code"], "claude": { "features": ["src/features/*", "apps/*"], "cartographerReminder": true } }
+```
 
 ---
 
