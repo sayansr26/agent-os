@@ -75,6 +75,10 @@ The highest-value things to capture are the ones a newcomer gets wrong:
 
 ## Step 4 — Write the rules
 
+If the project has `.agent-os/`, write rules there (`.agent-os/rules/<name>.md`)
+and run `npx @sayansr26/agent-os sync`; the `.claude/rules/` copies are
+generated, and the pre-edit hook blocks edits to them.
+
 Group by **what the reader is touching**, not by topic. Each file gets `paths:`
 frontmatter narrow enough that it is absent most of the time.
 
@@ -94,6 +98,30 @@ Verified across three services; see the ones named in `_architecture.md`.
 
 Dense agent notes, not prose. Invariants and gotchas. Skip anything a `ls` or a
 grep answers — that is rule 2 in the README and it applies hardest here.
+
+## Step 4b — Wire the agents into CLAUDE.md
+
+An agent nobody is told to use never runs. The session hook announces the
+agents every session; `CLAUDE.md` makes it part of the project's own contract,
+so it survives a machine without the plugin's hooks. Add this section once
+(skip it if `CLAUDE.md` already has one), trimmed to the agents this project
+actually needs:
+
+```markdown
+## Agents in this project (agent-os)
+
+- Before changing an existing feature: ask `agent-os:feature-cartographer` how
+  it is built. In plan mode ask it read-only, and have it file the map as the
+  first step after plan mode ends.
+- New subsystem, cross-module change, shared data model: `agent-os:architect`
+  first.
+- Writing the change: `agent-os:builder`, given the map and the files to change.
+- Done means: `agent-os:tester` verified it and `agent-os:reviewer` found no
+  rule violations.
+- After it is verified: `agent-os:documenter` updates the changelog and docs.
+- Work spanning several of these: `agent-os:orchestrator`.
+- Rules live in `.agent-os/rules/`; `.claude/rules/` is generated.
+```
 
 ## Step 5 — Stop Claude reading what it should not
 

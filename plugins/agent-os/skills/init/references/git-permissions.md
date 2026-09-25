@@ -4,8 +4,11 @@ A `permissions.deny` set that blocks every git command which changes the
 repository, while leaving read-only inspection (`status`, `log`, `diff`, `show`,
 `blame`, `rev-parse`, `ls-files`, `describe`, `grep`, `shortlog`, …) available.
 
-Paste into `~/.claude/settings.json` for every project, or a project's
-`.claude/settings.json` for one.
+You do not paste this. `scripts/settings.mjs` applies it — to the project's
+`.claude/settings.json`, `~/.claude/settings.json`, or both — merged into what
+is already there, as part of `/agent-os:init` or `agent-os settings --apply`.
+The list lives in that script (`GIT_DENY`); it is reproduced here so the
+judgment calls below have something to point at.
 
 ```json
 {

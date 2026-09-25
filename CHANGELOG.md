@@ -5,6 +5,65 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-09-25
+
+Plugin 0.5.0. Found by running 0.4.1 in a real project: the plugin passed its
+own audit while Claude ignored it — a whole feature was built without the
+cartographer, and the audit still said `MAINTAIN`.
+
+### Added
+- **Claude uses agent-os without being told to.** The SessionStart hook now
+  prints, after the git snapshot, which agent to use for what, which features
+  the cartographer has mapped, the plan-mode rule and where rules are edited.
+  It also fires on `compact`, so the contract survives a long session. The
+  "snapshot, not instructions" footer now covers only the snapshot; it used to
+  read as an instruction to ignore everything the hook said.
+- **PreToolUse hook on Edit/MultiEdit/Write.** Blocks edits to files generated
+  from `.agent-os/` — the next sync reverted them silently — and names the
+  source to edit. The first edit to an existing feature with no map adds a
+  one-time note to ask the cartographer first. Advisory, never blocks; off with
+  `claude.cartographerReminder: false`.
+- **Settings are written, not handed over.** `scripts/settings.mjs` (and
+  `agent-os settings`) merges the git write-protection deny rules and
+  `CLAUDE_CODE_ENABLE_TODO_TOOLS` into project and user settings, and the
+  task-tracking rule into each `CLAUDE.md`. `/agent-os:init` previews, asks
+  once, applies. `agent-os init` writes project scope and asks before
+  `~/.claude` (`--global` / `--no-global`). Changed `~/.claude` files are backed
+  up to `*.agent-os.bak`. This reverses 0.5.3's "nothing writes to
+  `~/.claude/`": in practice that meant the protection was never applied.
+- **`init` knows a fresh setup from a repair.** `scripts/state.mjs` checks the
+  source, CLAUDE.md, git protection and task tools at both scopes, the
+  task-tracking rule, the agent triggers and the plugin (installed, enabled,
+  version) and says `FRESH`, `REPAIR` or `HEALTHY`. `agent-os init` prints it
+  first, keeps an existing `.agent-os/` instead of re-scaffolding, and ends
+  with before → after and anything still to do. The audit prints the same
+  block, and `/agent-os:init` fixes only the `MISSING` items on a repair.
+- **`agent-os init` updates the plugin.** It used to install only; a project
+  installed once stayed on that version. Now it refreshes the marketplace and
+  runs `claude plugin update` (or `enable`, or `install`) for this project's
+  install, reports `from → to`, and runs every `claude` command in the project
+  directory so `--root` installs into the right project.
+- `claude.features` in `.agent-os/config.json` names the feature directories
+  (`["src/features/*"]` style). Defaults to the first of `src/features`,
+  `src/modules`, `app/features`, `features`, `modules`.
+
+### Fixed
+- **The audit's "mapped" check was a folder-exists test.** It now requires the
+  architecture map and reports feature coverage (mapped of total) and maps
+  older than their feature's last commit.
+- The audit now flags generated `.claude/rules/*` that drifted from
+  `.agent-os/rules/`, folders nested inside agent memory, missing git
+  protection or task tools, a CLAUDE.md with no agent triggers, and a
+  project-level cartographer reminder hook the plugin now duplicates.
+- **Nested `.claude/agent-memory/` inside agent memory.** Every agent is told
+  to write flat, by absolute path, inside its own memory directory.
+- **Plan mode skipped the cartographer.** The cartographer answers read-only in
+  plan mode and files its map when called again after; the change workflow
+  and session contract say so.
+- Builder, cartographer and documenter name `.agent-os/rules/` as the rule
+  source when the project has one. `establishing.md` adds an "Agents in this
+  project" section to CLAUDE.md so each agent has a trigger.
+
 ## [0.5.3] — 2026-09-15
 
 ### Added

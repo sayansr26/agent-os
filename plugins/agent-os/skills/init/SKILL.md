@@ -15,7 +15,7 @@ The layout this skill converges on:
 | Always-loaded | `CLAUDE.md`, ≤200 lines | small, fixed | Only what is true in *every* session |
 | On-demand | `.claude/rules/*.md` with `paths:` frontmatter | **zero** | Durable facts scoped to some files |
 | Self-writing | auto memory (`~/.claude/projects/<repo>/memory/`) | index only | Corrections, preferences, decisions |
-| Explored | `.claude/agent-memory/feature-cartographer/` | **zero** (subagent context) | How each feature is actually built |
+| Explored | `.claude/agent-memory/agent-os-feature-cartographer/` | **zero** (subagent context) | How each feature is actually built |
 | Task state | the project's own vault / handoff file | zero (read selectively) | What is in flight right now |
 
 The principle the whole layout serves: **storing a fact and loading a fact are
@@ -28,7 +28,7 @@ a memory-bank read at every startup, a rules file with no `paths:` — is the bu
 |---|---|
 | *(none)* | The full pass: audit, then route by MODE |
 | `audit` | Run the audit and report. Change nothing. |
-| `settings` | The settings and permissions pass only — read `~/.claude/settings.json` and the project's, report what is set, and propose changes. See below. |
+| `settings` | The settings pass only — git write protection and the task tools, applied to project and user settings after one confirmation. See below. |
 
 Related skills: `/agent-os:map` builds the architecture map, `/agent-os:memory`
 inspects and repairs what the project remembers.
@@ -51,12 +51,37 @@ It reports: always-loaded files and their line counts, whether every
 stores (`memory-bank/`, `.serena/memories/`, cursor and windsurf rules, memory-ish
 MCP servers), per-agent memory health, the machine layer (`~/.claude` CLAUDE.md,
 shadowing agents or skills, a duplicate session-resume hook, permissions
-posture), the startup byte and token cost, and a ranked finding list.
+posture), the setup state (fresh, repair or healthy), the startup byte and
+token cost, and a ranked finding list.
 
 **Show the output to the user before you change anything.** Do not restructure a
 repo you have only just opened.
 
-## Step 2 — Route by MODE
+## Step 2 — Fresh setup or repair?
+
+Above `MODE`, the audit prints a `SETUP` block: the install and settings state,
+one line per item, and a verdict. Read it first — it decides how much of this
+skill runs, so a project that is already set up is repaired, never re-initialised.
+
+| SETUP | What it means | Do |
+|---|---|---|
+| `FRESH` | Nothing of agent-os here yet | The full pass: Step 3 by `MODE`, then the settings pass. If `.agent-os/ source` is missing and the user wants rules for other tools too, suggest `npx @sayansr26/agent-os init` once. |
+| `REPAIR` | Set up, but items are `MISSING` | Fix **only** the `MISSING` lines, each by the route below, then `MODE` as usual. Do not rebuild anything marked `ok`. |
+| `HEALTHY` | Every item `ok` | Skip the settings pass; `MODE` alone decides the rest. |
+
+Routes for `MISSING` items — batch them into the **one** confirmation the
+settings pass asks, rather than a question per item:
+
+| Item | Fix |
+|---|---|
+| git write protection, task tools, task-tracking rule | the settings pass below |
+| plugin version (older than latest) | `claude plugin marketplace update sayan-plugins`, then `claude plugin update agent-os@sayan-plugins --scope <its scope> --yes`. Tell the user to run `/reload-plugins` — the running session keeps the old version until then. If `claude` is not on PATH, give them `/plugin update agent-os@sayan-plugins`. |
+| plugin enabled | `claude plugin enable agent-os@sayan-plugins` |
+| CLAUDE.md says when to use each agent | `references/establishing.md`, Step 4b |
+| CLAUDE.md | `MODE` routes it (ESTABLISH) |
+| `.agent-os/ source` | optional — only if the user wants rules compiled for other tools: `npx @sayansr26/agent-os init` |
+
+## Step 3 — Route by MODE
 
 The audit ends with a `MODE` line. It decides what this run is for:
 
@@ -73,55 +98,70 @@ login flow from email to OTP"* execute from known structure instead of
 rediscovering the codebase. `references/changing-a-feature.md` is that workflow —
 point the user at it once the layer exists.
 
-## Step 3 — Act on the findings
+## Step 4 — Act on the findings
 
 Each finding routes to one place. Load only what the audit actually surfaced:
 
 | Finding | Read |
 |---|---|
 | `MODE ESTABLISH` or `MODE MAP` | `references/establishing.md` |
+| `CLAUDE.md` has no "Agents in this project" section | `references/establishing.md`, Step 4b |
 | user asks how to change an existing feature | `references/changing-a-feature.md` |
 | legacy store found; CLAUDE.md over budget | `references/migrating.md` |
 | rule without `paths:`; no rules layer yet; CLAUDE.md to trim | `references/writing-rules.md` |
-| `defaultMode` auto-approves with an empty `deny` | `references/git-permissions.md` |
+| git write protection or task tools missing | the settings pass below — apply, don't hand over |
 | LSP plugin recommended; checked-in generated dirs | `references/establishing.md`, "Stop Claude reading what it should not" |
 | hook target missing | delete the hook entry, or restore the script — say which |
 | shadowing agent or skill in `~/.claude` or `.claude/agents/` | the user removes the standalone copy; a plugin cannot |
 | unindexed or near-duplicate agent memory topic files | merge into the best-named file, delete the rest, rebuild `MEMORY.md` as one line per file |
 | project CLAUDE.md refers to a `~/.claude/CLAUDE.md` that is absent | the user creates it or drops the reference |
 
-Findings on the machine layer are the user's to fix — a plugin cannot write
-`~/.claude`. Hand over the exact change rather than attempting it.
+Shadowing agents and skills on the machine layer are the user's to remove.
+Settings are not: the settings pass below writes them, including `~/.claude`.
 
-## Step 4 — Verify by re-running
+## Step 5 — Verify by re-running
 
-Run the audit again and show the before and after: finding count, startup bytes,
-token estimate. Do not declare success on vibes — the script already produces the
+Run the audit again and show the before and after: the `SETUP` verdict (a
+repair should end `HEALTHY`), finding count, startup bytes, token estimate. Do not declare success on vibes — the script already produces the
 numbers, so quote them.
 
 ## The settings pass
 
-The audit already reads both settings files and reports `defaultMode`, the deny
-list, hook registrations and shadowing. To act on it:
+Runs when `SETUP` is `FRESH`, or `REPAIR` with a settings item missing (after Step 4), and alone for `settings`. It
+**writes** the setup rather than describing it — handing the user a JSON block
+to paste is how a project ends up with no git protection and no task tools.
 
-1. **Show what is set** — project `.claude/settings.json` and `~/.claude/settings.json`,
-   side by side, so the user can see which rules exist only in this project and
-   therefore vanish in every other one.
-2. **Propose, do not apply.** Write out the exact JSON block and ask. This is the
-   one place where acting first is wrong: `permissions.deny` is the guardrail on
-   your own behaviour, and a skill that edits its own guardrails without being
-   asked is exactly the thing the setting exists to prevent. Apply only after an
-   explicit yes, and never widen an existing deny list without pointing out what
-   it would stop blocking.
-3. **What to propose**, when the audit flagged it:
-   - git write protection — `references/git-permissions.md` has the rule set
-   - `Read` deny rules for checked-in generated or vendored paths
-   - a code intelligence plugin for the detected language
-   - `claudeMdExcludes` in a monorepo where other teams' files load
+1. **Preview.** One call:
 
-Anything under `~/.claude/` affects every project on the machine. Say so before
-proposing it, and prefer the project's own settings file when the rule is really
-about this project.
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/skills/init/scripts/settings.mjs" --scope both
+   ```
+
+   It prints, per file, what it would add to project `.claude/settings.json` and
+   `~/.claude/settings.json` — the git write-protection deny rules, and
+   `env.CLAUDE_CODE_ENABLE_TODO_TOOLS` — plus the task-tracking rule for each
+   `CLAUDE.md`. If it reports everything already present, say so and stop.
+2. **Ask once.** One AskUserQuestion: apply to *project and user* (recommended —
+   `~/.claude` protects every other repo on this machine), *project only*, or
+   *skip*. This is the one confirmation: `permissions.deny` is the guardrail on
+   your own behaviour, so it is changed with the user's yes, never silently.
+3. **Apply** with the same command plus `--apply` and `--scope both` or
+   `--scope project`. The script merges — existing keys, allow rules, deny rules
+   and a user-set env value survive — and backs up any `~/.claude` file it
+   changes to `<file>.agent-os.bak`. Show its output.
+4. **If the Bash call is denied** (writing under `~/.claude` can need approval),
+   do not fall back to pasting JSON. Give the user the exact command to run
+   with the `!` prefix so it runs in this session:
+   `! node "<plugin root>/skills/init/scripts/settings.mjs" --scope both --apply`.
+
+The rule set and every judgment call in it (why `git -C` is denied, why
+`fetch` is allowed) are in `references/git-permissions.md`.
+
+Also propose, when the audit flagged them — these are project-specific, so they
+stay proposals:
+- `Read` deny rules for checked-in generated or vendored paths
+- a code intelligence plugin for the detected language
+- `claudeMdExcludes` in a monorepo where other teams' files load
 
 ## What this skill will not do
 
