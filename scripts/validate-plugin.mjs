@@ -86,10 +86,12 @@ if (pj.val && mk.val) {
     : bad(`version drift: plugin.json ${pj.val.version} vs marketplace metadata ${mv}`);
   for (const f of ["name", "description", "version"]) pj.val[f] ? ok(`plugin.json has ${f}`) : bad(`plugin.json missing ${f}`);
   /^[a-z0-9-]+$/.test(pj.val.name) ? ok("plugin name is kebab-case") : bad(`plugin name "${pj.val.name}" is not kebab-case`);
+  // icon.png is the directory listing icon; the portal reads it from here.
   const dirs = readdirSync(join(PLUGIN, ".claude-plugin"));
-  dirs.length === 1 && dirs[0] === "plugin.json"
-    ? ok(".claude-plugin holds only plugin.json")
-    : bad(`.claude-plugin should hold only plugin.json, found: ${dirs.join(", ")}`);
+  const extra = dirs.filter((f) => f !== "plugin.json" && f !== "icon.png");
+  dirs.includes("plugin.json") && !extra.length
+    ? ok(".claude-plugin holds only plugin.json (and icon.png)")
+    : bad(`.claude-plugin should hold only plugin.json and icon.png, found: ${dirs.join(", ")}`);
 }
 
 // ---- agents ----
