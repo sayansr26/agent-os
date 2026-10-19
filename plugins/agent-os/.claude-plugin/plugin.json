@@ -8,6 +8,8 @@
   },
   "homepage": "https://github.com/sayansr26/agent-os",
   "repository": "https://github.com/sayansr26/agent-os",
+  "privacyPolicyUrl": "https://s3techpulse.com/privacy-policy",
+  "supportUrl": "https://s3techpulse.com/support",
   "license": "MIT",
   "keywords": [
     "context-engineering",
