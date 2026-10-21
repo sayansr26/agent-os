@@ -140,6 +140,28 @@ Feature directories default to the first of `src/features`, `src/modules`, `app/
 { "targets": ["claude-code"], "claude": { "features": ["src/features/*", "apps/*"], "cartographerReminder": true } }
 ```
 
+### auto-route
+
+A second, independent plugin in the same marketplace: a Claude Code mod (a TypeScript hooks module) that picks the model and effort for each turn from what the prompt asks for — lookups go to Haiku, regular coding to Sonnet, design and debugging to Opus, "ultrathink" and security work to Opus at max effort. Subagents keep their own model.
+
+```
+/plugin install auto-route@sayan-plugins
+```
+
+`agent-os init` installs and updates it alongside agent-os, at project scope; `--no-auto-route` leaves it out.
+
+`/route` shows the current route; `/route light|standard|deep|max` pins a tier, `/route off` hands control back to the session's own model, `/route auto` resumes routing. The tier table and the prompt rules sit at the top of `plugins/auto-route/hooks/register.ts`.
+
+Working on it:
+
+```sh
+claude --plugin-dir plugins/auto-route     # run a session with the working copy, hot-reloaded
+claude plugin validate plugins/auto-route  # what the engine would refuse
+claude plugin test plugins/auto-route      # tests/route.test.ts
+```
+
+Once the engine loads it, it writes `.claude-plugin/types/` (git-ignored) for the editor; `tsc -p plugins/auto-route` type-checks it after that. Bump `version` in its `plugin.json` when shipping a change so installs update.
+
 ---
 
 ## Design rules

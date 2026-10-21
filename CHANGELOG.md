@@ -5,7 +5,25 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] — 2026-09-25
+## [0.6.1] — 2026-10-21
+
+agent-os plugin unchanged (0.5.0). New plugin auto-route 0.1.0 in the same
+marketplace. 0.7.0 stays reserved for the move to Rulegate.
+
+### Added
+- **auto-route, a second plugin in the `sayan-plugins` marketplace.** A Claude
+  Code mod (a TypeScript hooks module) that picks the model and effort for each
+  turn from what the prompt asks for: lookups to Haiku, regular coding to
+  Sonnet, design and debugging to Opus, "ultrathink" and security work to Opus
+  at max effort. Subagents keep their own model. `/route` shows the route,
+  `/route light|standard|deep|max` pins a tier, `/route off` and `/route auto`
+  switch it off and on. `/plugin install auto-route@sayan-plugins`.
+- **`agent-os init` installs and updates auto-route** at project scope next to
+  agent-os, adding or refreshing the marketplace once. `--no-auto-route` leaves
+  it out; `--no-plugin` still skips both.
+- `scripts/validate-plugin.mjs` checks every other marketplace plugin built
+  from hook modules: manifest, name against its marketplace entry, the types
+  contract and each module it names.
 
 Plugin 0.5.0. Found by running 0.4.1 in a real project: the plugin passed its
 own audit while Claude ignored it — a whole feature was built without the

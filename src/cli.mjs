@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { detect, summarise, TOOLS } from "./detect.mjs";
 import { load, write, readIfExists, matches, BANNER, DIR } from "./source.mjs";
 import { adopt } from "./adopt.mjs";
-import { ensurePlugin, MARKETPLACE_NAME, PLUGIN } from "./plugin.mjs";
+import { ensurePlugin, MARKETPLACE_NAME, PLUGIN, PLUGINS } from "./plugin.mjs";
 import { setupState, describeState } from "../plugins/agent-os/skills/init/scripts/state.mjs";
 import { applyScope, describe } from "./claude-setup.mjs";
 import { createInterface } from "node:readline/promises";
@@ -33,7 +33,9 @@ Options
   --root <dir>   project directory (default: cwd)
   --dry-run      print what would change, write nothing
   --force        overwrite files agent-os did not generate (it refuses by default)
-  --no-plugin    skip installing or updating the Claude Code plugin during init
+  --no-plugin    skip installing or updating the Claude Code plugins during init
+  --no-auto-route
+                 init: install agent-os but not the auto-route model router
   --global       init: also write ~/.claude settings without asking
   --no-global    init: leave ~/.claude alone
 `;
@@ -265,19 +267,25 @@ Pick one:
     }
 
     if (cmd === "init" && targets.includes("claude-code") && !argv.includes("--no-plugin")) {
-      console.log(`\n${bold("Claude Code plugin")} ${dim(`${PLUGIN}@${MARKETPLACE_NAME}`)}\n`);
-      const r = ensurePlugin({ root, dry });
-      for (const line of r.done) console.log(`  ${dim(line)}`);
-      if (r.ok) console.log({
-        installed: `\n  installed ${r.to || ""} at project scope ${dim("— .claude/settings.json, so it travels with the repo")}`,
-        updated: `\n  updated ${r.from} → ${r.to}`,
-        current: `\n  already the latest (${r.to})`,
-        "dry-run": `\n  ${dim(r.from ? `installed: ${r.from} — would refresh and update` : "not installed — would install")}`,
-      }[r.reason]);
-      for (const line of r.hint) console.log(`  ${r.ok ? dim(line) : line}`);
-      if (r.reason === "installed" || r.reason === "updated")
-        console.log(`  ${dim("restart Claude Code, or /reload-plugins, to load it")}`);
-      console.log(`\n  ${dim("--no-plugin skips this")}`);
+      // Both come from the same marketplace, so it is added or refreshed once:
+      // by the first plugin whose run gets that far.
+      let refresh = true;
+      for (const plugin of PLUGINS.filter((p) => p === PLUGIN || !argv.includes(`--no-${p}`))) {
+        console.log(`\n${bold("Claude Code plugin")} ${dim(`${plugin}@${MARKETPLACE_NAME}`)}\n`);
+        const r = ensurePlugin({ root, dry, plugin, refresh });
+        if (r.done.length || r.reason === "no-cli") refresh = false;
+        for (const line of r.done) console.log(`  ${dim(line)}`);
+        if (r.ok) console.log({
+          installed: `\n  installed ${r.to || ""} at project scope ${dim("— .claude/settings.json, so it travels with the repo")}`,
+          updated: `\n  updated ${r.from} → ${r.to}`,
+          current: `\n  already the latest (${r.to})`,
+          "dry-run": `\n  ${dim(r.from ? `installed: ${r.from} — would refresh and update` : "not installed — would install")}`,
+        }[r.reason]);
+        for (const line of r.hint) console.log(`  ${r.ok ? dim(line) : line}`);
+        if (r.reason === "installed" || r.reason === "updated")
+          console.log(`  ${dim("restart Claude Code, or /reload-plugins, to load it")}`);
+      }
+      console.log(`\n  ${dim("--no-plugin skips this; --no-auto-route skips only the model router")}`);
     }
 
     if (cmd === "init" && !dry) {
