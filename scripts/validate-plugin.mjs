@@ -145,6 +145,32 @@ else {
   }
 }
 
+// ---- mod plugins ----
+// Other marketplace entries whose hooks.json names TypeScript modules (mods)
+// rather than shell commands. They ship no agents or skills, so they get their
+// own lighter checks; `claude plugin validate <dir>` goes deeper when installed.
+if (mk.val) {
+  const mods = (mk.val.plugins || []).filter((p) => typeof p.source === "string" && p.source.replace(/^\.\//, "") !== PLUGIN.replace(/^\.\//, ""));
+  for (const p of mods) {
+    console.log(`\nmod: ${p.name}`);
+    const dir = p.source;
+    const mj = json(join(dir, ".claude-plugin/plugin.json"));
+    if (mj.err) { bad(`${dir}/.claude-plugin/plugin.json: ${mj.err}`); continue; }
+    for (const f of ["name", "description", "version"]) mj.val[f] ? ok(`plugin.json has ${f}`) : bad(`plugin.json missing ${f}`);
+    mj.val.name === p.name ? ok("name matches marketplace entry") : bad(`plugin.json name "${mj.val.name}" != marketplace entry "${p.name}"`);
+    if (mj.val.types) existsSync(join(dir, mj.val.types)) ? ok(`types -> ${mj.val.types}`) : bad(`types -> ${mj.val.types} does not exist`);
+    // The engine writes .claude-plugin/types/ (with its own .gitignore) when it
+    // loads the mod; anything else in .claude-plugin is a mistake.
+    const extra = readdirSync(join(dir, ".claude-plugin")).filter((f) => !["plugin.json", "types"].includes(f));
+    extra.length ? bad(`.claude-plugin holds unexpected: ${extra.join(", ")}`) : ok(".claude-plugin holds only plugin.json (+ engine types)");
+    const h = json(join(dir, "hooks/hooks.json"));
+    if (h.err) { bad(`hooks/hooks.json: ${h.err}`); continue; }
+    const modules = h.val.modules || [];
+    modules.length ? ok(`${modules.length} hook module(s)`) : bad("hooks.json names no modules");
+    for (const m of modules) existsSync(join(dir, "hooks", m)) ? ok(`module -> ${m}`) : bad(`module -> ${m} does not exist`);
+  }
+}
+
 // ---- leak check ----
 // Examples in a public plugin must be invented, never lifted from a real
 // codebase you happen to have open. This cannot be checked generically, so
