@@ -160,9 +160,9 @@ if (mk.val) {
     mj.val.name === p.name ? ok("name matches marketplace entry") : bad(`plugin.json name "${mj.val.name}" != marketplace entry "${p.name}"`);
     if (mj.val.types) existsSync(join(dir, mj.val.types)) ? ok(`types -> ${mj.val.types}`) : bad(`types -> ${mj.val.types} does not exist`);
     // The engine writes .claude-plugin/types/ (with its own .gitignore) when it
-    // loads the mod; anything else in .claude-plugin is a mistake.
-    const extra = readdirSync(join(dir, ".claude-plugin")).filter((f) => !["plugin.json", "types"].includes(f));
-    extra.length ? bad(`.claude-plugin holds unexpected: ${extra.join(", ")}`) : ok(".claude-plugin holds only plugin.json (+ engine types)");
+    // loads the mod; icon.png is the listing icon; anything else is a mistake.
+    const extra = readdirSync(join(dir, ".claude-plugin")).filter((f) => !["plugin.json", "icon.png", "types"].includes(f));
+    extra.length ? bad(`.claude-plugin holds unexpected: ${extra.join(", ")}`) : ok(".claude-plugin holds only plugin.json (+ icon.png, engine types)");
     const h = json(join(dir, "hooks/hooks.json"));
     if (h.err) { bad(`hooks/hooks.json: ${h.err}`); continue; }
     const modules = h.val.modules || [];

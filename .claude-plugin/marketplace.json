@@ -33,6 +33,18 @@
         "effort",
         "mod"
       ]
+    },
+    {
+      "name": "auto-handoff",
+      "source": "./plugins/auto-handoff",
+      "description": "Hands a long session off to a fresh one instead of auto-compacting: Haiku writes a structured brief, the mod runs /clear and seeds the new session with it. Vendored from alexknowshtml/claude-auto-handoff (MIT).",
+      "category": "productivity",
+      "keywords": [
+        "context",
+        "handoff",
+        "compaction",
+        "mod"
+      ]
     }
   ]
 }

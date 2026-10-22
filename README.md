@@ -162,6 +162,16 @@ claude plugin test plugins/auto-route      # tests/route.test.ts
 
 Once the engine loads it, it writes `.claude-plugin/types/` (git-ignored) for the editor; `tsc -p plugins/auto-route` type-checks it after that. Bump `version` in its `plugin.json` when shipping a change so installs update.
 
+### auto-handoff
+
+A third plugin, vendored from [alexknowshtml/claude-auto-handoff](https://github.com/alexknowshtml/claude-auto-handoff) by Alex Hillman (MIT). Instead of auto-compacting at the context limit, it has Haiku write a structured brief, runs `/clear`, and seeds the fresh session with a pointer to the brief, so work carries on with a clean context. Settings (threshold, templates, ignored files) are rows in `/config`.
+
+```
+/plugin install auto-handoff@sayan-plugins
+```
+
+`agent-os init` installs it too; `--no-auto-handoff` leaves it out. One change from upstream: the brief viewer server is **off** by default here (upstream serves pages on your Tailscale IP); set `viewer` in `/config` to turn it on. `plugins/auto-handoff/UPSTREAM.md` records the upstream commit, the local changes and how to sync. Develop it the same way as auto-route: `claude --plugin-dir plugins/auto-handoff`, `claude plugin validate|test plugins/auto-handoff`.
+
 ---
 
 ## Design rules

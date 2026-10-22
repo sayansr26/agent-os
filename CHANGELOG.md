@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] — 2026-10-22
+
+agent-os plugin unchanged (0.5.0), auto-route unchanged (0.1.0). New plugin
+auto-handoff 0.8.6 in the same marketplace.
+
+### Added
+- **auto-handoff, a third plugin in the `sayan-plugins` marketplace**, vendored
+  from [alexknowshtml/claude-auto-handoff](https://github.com/alexknowshtml/claude-auto-handoff)
+  by Alex Hillman (MIT, commit `8d762ce`). In place of auto-compact, Haiku
+  writes a structured brief, the mod runs `/clear`, and the fresh session is
+  seeded with a pointer to the brief. `/plugin install auto-handoff@sayan-plugins`.
+  The brief viewer server is **off** by default here (upstream serves on the
+  Tailscale IP); `plugins/auto-handoff/UPSTREAM.md` lists every local change.
+- **`agent-os init` installs and updates auto-handoff** with the other two;
+  `--no-auto-handoff` leaves it out.
+
+### Changed
+- `scripts/validate-plugin.mjs` lets a mod carry a listing `icon.png`, as the
+  agent-os plugin now does.
+
 ## [0.6.1] — 2026-10-21
 
 agent-os plugin unchanged (0.5.0). New plugin auto-route 0.1.0 in the same

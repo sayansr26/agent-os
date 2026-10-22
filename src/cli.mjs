@@ -35,7 +35,9 @@ Options
   --force        overwrite files agent-os did not generate (it refuses by default)
   --no-plugin    skip installing or updating the Claude Code plugins during init
   --no-auto-route
-                 init: install agent-os but not the auto-route model router
+                 init: leave out the auto-route model router
+  --no-auto-handoff
+                 init: leave out the auto-handoff session handoff
   --global       init: also write ~/.claude settings without asking
   --no-global    init: leave ~/.claude alone
 `;
@@ -267,7 +269,7 @@ Pick one:
     }
 
     if (cmd === "init" && targets.includes("claude-code") && !argv.includes("--no-plugin")) {
-      // Both come from the same marketplace, so it is added or refreshed once:
+      // All come from the same marketplace, so it is added or refreshed once:
       // by the first plugin whose run gets that far.
       let refresh = true;
       for (const plugin of PLUGINS.filter((p) => p === PLUGIN || !argv.includes(`--no-${p}`))) {
@@ -285,7 +287,7 @@ Pick one:
         if (r.reason === "installed" || r.reason === "updated")
           console.log(`  ${dim("restart Claude Code, or /reload-plugins, to load it")}`);
       }
-      console.log(`\n  ${dim("--no-plugin skips this; --no-auto-route skips only the model router")}`);
+      console.log(`\n  ${dim("--no-plugin skips this; --no-auto-route / --no-auto-handoff skip one mod")}`);
     }
 
     if (cmd === "init" && !dry) {
