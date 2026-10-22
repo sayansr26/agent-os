@@ -2,9 +2,10 @@
  * Install or update the Claude Code half of agent-os during `init`.
  *
  * The CLI compiles rules for every tool. Claude Code additionally gets the
- * agents, skills, per-agent memory and hooks, which ship as a plugin, and
- * auto-route, a mod that picks the model and effort per turn. Both live in
- * this repo's marketplace. `init` brings each to the latest version whatever
+ * agents, skills, per-agent memory and hooks, which ship as a plugin; plus two
+ * mods: auto-route, which picks the model and effort per turn, and
+ * auto-handoff, which hands a full session to a fresh one instead of
+ * compacting. All three live in this repo's marketplace. `init` brings each to the latest version whatever
  * state it finds:
  *
  *   not installed        marketplace add + install, at project scope
@@ -28,7 +29,7 @@ export const MARKETPLACE = "sayansr26/agent-os";
 export const MARKETPLACE_NAME = "sayan-plugins";
 export const PLUGIN = "agent-os";
 // Installed by `init` in this order; each can be skipped with --no-<name>.
-export const PLUGINS = [PLUGIN, "auto-route"];
+export const PLUGINS = [PLUGIN, "auto-route", "auto-handoff"];
 const idOf = (plugin) => `${plugin}@${MARKETPLACE_NAME}`;
 
 const run = (args, cwd) =>

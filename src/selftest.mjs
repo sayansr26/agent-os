@@ -102,10 +102,14 @@ try {
     ok(/marketplace add sayansr26\/agent-os|plugin marketplace add|not on PATH/.test(pi.stdout),
        "init names the marketplace step or says why it could not run it");
     ok(pi.stdout.includes("auto-route@sayan-plugins"), "init sets up auto-route by default");
+    ok(pi.stdout.includes("auto-handoff@sayan-plugins"), "init sets up auto-handoff by default");
     ok((pi.stdout.match(/marketplace add/g) || []).length <= 1, "the marketplace is added once, not per plugin");
     const na = cli(["init", "--dry-run", "--no-auto-route"], r4);
     ok(!/install auto-route@sayan-plugins/.test(na.stdout) && /install agent-os@sayan-plugins/.test(na.stdout),
        "--no-auto-route keeps agent-os and skips auto-route");
+    const nh = cli(["init", "--dry-run", "--no-auto-handoff"], r4);
+    ok(!/install auto-handoff@sayan-plugins/.test(nh.stdout) && /install auto-route@sayan-plugins/.test(nh.stdout),
+       "--no-auto-handoff skips only auto-handoff");
     rmSync(r4, { recursive: true, force: true });
 
     // A hand-written file at a generated path must survive a sync.
