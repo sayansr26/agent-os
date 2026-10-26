@@ -2,7 +2,7 @@
 /**
  * Structural validation for the agent-os plugin.
  *
- * Runs with no auth and no network, so CI can gate every push.
+ * Runs with no auth and no network, so it can gate every push.
  * Complements `claude plugin validate`, which needs the CLI installed.
  *
  * Every check here exists because something actually broke:

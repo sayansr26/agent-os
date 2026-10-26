@@ -18,7 +18,7 @@ things:
 claude plugin validate ./plugins/agent-os --strict
 ```
 
-CI runs both on every push and pull request.
+There is no CI: run both before you push or publish.
 
 ## Working on the plugin
 
@@ -49,7 +49,7 @@ plugins/agent-os/
     memory/                       inspect and repair what a project remembers
       scripts/memory.mjs          deterministic store listing and health check
   hooks/                          hooks.json + session-resume.mjs
-scripts/validate-plugin.mjs       structural validation, runs in CI
+scripts/validate-plugin.mjs       structural validation, run before every push
 ```
 
 ## What makes a change likely to be merged
