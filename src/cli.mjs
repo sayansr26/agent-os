@@ -95,6 +95,17 @@ export async function main(argv) {
 
   if (cmd === "help" || argv.includes("-h") || argv.includes("--help")) { console.log(USAGE); return; }
 
+  // A repository Rulegate owns: init would adopt Rulegate's generated CLAUDE.md and
+  // AGENTS.md as this tool's source, and every write after that fights `rulegate check`.
+  // That happened to Rulegate's own repository (its T112), so both writers stop here.
+  if ((cmd === "init" || cmd === "sync") && existsSync(join(root, ".rulegate"))) {
+    console.error(`\n  This repository uses Rulegate (.rulegate/ exists), which replaces agent-os.`);
+    console.error(`  agent-os ${cmd} would treat Rulegate's generated files as its source. Nothing was written.`);
+    console.error(`\n  Use ${bold("npx rulegate sync")} here instead.\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   const found = detect(root);
 
   if (cmd === "detect") {
