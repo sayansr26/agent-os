@@ -10,6 +10,7 @@ import { setupState, describeState } from "../plugins/agent-os/skills/init/scrip
 import { applyScope, describe } from "./claude-setup.mjs";
 import { createInterface } from "node:readline/promises";
 import { compile, TARGETS } from "./targets.mjs";
+import { enabled as cursorEnabled } from "./cursor.mjs";
 
 const bold = (s) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
@@ -41,6 +42,16 @@ Options
   --global       init: also write ~/.claude settings without asking
   --no-global    init: leave ~/.claude alone
 `;
+
+/** Will this init/sync compile for Claude Code? Mirrors how scaffold picks targets. */
+function claudeTargeted(root, found) {
+  try {
+    const cfg = JSON.parse(readFileSync(join(root, DIR, "config.json"), "utf8"));
+    return (cfg.targets || []).includes("claude-code");
+  } catch {}
+  const present = found.filter((t) => t.present).map((t) => t.id);
+  return present.includes("claude-code") || !present.length;
+}
 
 function scaffold(root, found) {
   const present = found.filter((t) => t.present).map((t) => t.id);
@@ -152,18 +163,24 @@ export async function main(argv) {
   let adopted = new Set();
 
   let before = null;
+  // The SETUP state is Claude Code's: CLAUDE.md, .claude/settings.json, the
+  // plugin. In a project that does not target Claude Code every item reads
+  // MISSING and the verdict never leaves REPAIR, so it is not shown there.
+  const forClaude = claudeTargeted(root, found);
   if (cmd === "init") {
     console.log(`\n${bold("agent-os init")}  ${root}\n`);
     // Decide fresh vs repair before touching anything, and say which, so a
     // second run on a set-up project reads as a repair rather than a re-init.
     before = setupState(root);
-    for (const l of describeState(before)) console.log(`  ${l}`);
-    console.log({
-      fresh: `\n  ${dim("Fresh setup: creating everything.")}`,
-      repair: `\n  ${dim("Existing setup: fixing the items marked MISSING, leaving the rest as it is.")}`,
-      healthy: `\n  ${dim("Setup is complete: re-syncing and checking the plugin for updates.")}`,
-    }[before.status]);
-    console.log("");
+    if (forClaude) {
+      for (const l of describeState(before)) console.log(`  ${l}`);
+      console.log({
+        fresh: `\n  ${dim("Fresh setup: creating everything.")}`,
+        repair: `\n  ${dim("Existing setup: fixing the items marked MISSING, leaving the rest as it is.")}`,
+        healthy: `\n  ${dim("Setup is complete: re-syncing and checking the plugin for updates.")}`,
+      }[before.status]);
+      console.log("");
+    }
     console.log(summarise(found));
     const hadSource = existsSync(join(root, DIR));
     const { present, taken } = scaffold(root, found);
@@ -220,7 +237,7 @@ export async function main(argv) {
       const cur = readIfExists(root, f.path);
       if (cur === null) return true;                       // nothing there yet
       if (cur.includes(BANNER)) return true;               // we wrote it
-      if (TARGETS[f.target]?.merge) return true;           // merged in place, nothing lost
+      if (f.merged) return true;                           // merged in place, nothing lost
       if (adopted.has(f.path)) return true;                // init just took this as the source
       if (matches(root, f.path, f.content) === true) return true; // already identical
       return false;
@@ -301,7 +318,22 @@ Pick one:
       console.log(`\n  ${dim("--no-plugin skips this; --no-auto-route / --no-auto-handoff skip one mod")}`);
     }
 
-    if (cmd === "init" && !dry) {
+    if (cmd !== "check" && targets.includes("cursor") && cursorEnabled(src.config)) {
+      const n = (re) => files.filter((f) => re.test(f.path)).length;
+      console.log(`\n${bold("Cursor")}  ${dim("agent-os layer, compiled from this package")}\n`);
+      console.log(`  ${n(/^\.cursor\/agents\/agent-os-/)} subagents     agent-os-feature-cartographer, -architect, -builder, -tester, -reviewer, …`);
+      console.log(`  ${n(/^\.cursor\/skills\/agent-os-[^/]+\/SKILL\.md$/)} skills        /agent-os-init, /agent-os-map, /agent-os-memory`);
+      console.log(`  hooks           session start, generated-file guard${src.config.cursor?.gitProtection === false ? "" : ", git write protection"}  ${dim("(.cursor/hooks.json)")}`);
+      console.log(`  agent memory    .claude/agent-memory/agent-os-<agent>/  ${dim("— shared with Claude Code")}`);
+      if (cmd === "init") console.log(`\n  ${dim("Reload the Cursor window, then run /agent-os-init in Agent chat.")}`);
+    }
+
+    if (cmd === "init" && !dry && !forClaude) {
+      const labels = targets.map((t) => TARGETS[t]?.label || t);
+      console.log(`\n${bold("Result")}  ${labels.length ? `compiled for ${labels.join(", ")}` : "AGENTS.md only"}`);
+    }
+
+    if (cmd === "init" && !dry && forClaude) {
       const after = setupState(root);
       console.log(`\n${bold("Result")}  ${before.status} → ${after.status}`);
       if (after.missing.length) {

@@ -5,6 +5,30 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] — 2026-10-31
+
+agent-os plugin 0.5.1 (hooks gain a Cursor mode; Claude Code behaviour
+unchanged), auto-route unchanged (0.1.0), auto-handoff unchanged (0.8.6).
+
+### Added
+- **The agent-os layer for Cursor.** With `cursor` as a target, `init` and
+  `sync` compile the seven agents to `.cursor/agents/agent-os-<name>.md`, the
+  three skills to `/agent-os-init`, `/agent-os-map` and `/agent-os-memory`, the
+  session-start and pre-edit hooks plus git write protection to
+  `.cursor/hooks/agent-os/` (registered in `.cursor/hooks.json`, merged), and
+  the agent contract to an always-on `.cursor/rules/agent-os-agents.mdc`.
+  Subagent memory uses `.claude/agent-memory/agent-os-<name>/`, the directories
+  Claude Code's plugin agents use. `{ "cursor": { "agentOs": false } }` or
+  `{ "cursor": { "gitProtection": false } }` in `.agent-os/config.json` opt out.
+- `session-resume.mjs --cursor` and `pre-edit.mjs --cursor` answer in Cursor's
+  hook protocol (`additional_context`; `permission` with an explicit `allow`).
+
+### Fixed
+- **`init` in a project that does not target Claude Code** no longer prints
+  Claude Code's SETUP block or ends `fresh → repair` with a to-do list of
+  CLAUDE.md, `.claude/settings.json` and plugin items — including one telling
+  the user to run `init` again. It now ends with what it compiled for.
+
 ## [0.6.2] — 2026-10-22
 
 agent-os plugin unchanged (0.5.0), auto-route unchanged (0.1.0). New plugin

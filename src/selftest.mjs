@@ -57,6 +57,39 @@ try {
   ok(read(".claude/skills/demo/SKILL.md") !== null, "skills -> .claude/skills");
   ok(read(".cline/skills/demo/SKILL.md") !== null, "skills -> .cline/skills");
 
+  console.log("\n  Cursor gets the agent-os layer");
+  {
+    const agents = ["architect", "builder", "documenter", "feature-cartographer", "orchestrator", "reviewer", "tester"];
+    ok(agents.every((a) => read(`.cursor/agents/agent-os-${a}.md`)?.startsWith(`---\nname: agent-os-${a}\n`)), "7 subagents in .cursor/agents/, Cursor-legal names");
+    const carto = read(".cursor/agents/agent-os-feature-cartographer.md");
+    ok(carto.includes(".claude/agent-memory/agent-os-feature-cartographer/"), "subagent memory shared with Claude Code's directory");
+    ok(!/agent-os:[a-z]/.test(carto) && !/^memory:|^tools:/m.test(carto), "no Claude-only names or frontmatter left");
+    ok(["init", "map", "memory"].every((s) => read(`.cursor/skills/agent-os-${s}/SKILL.md`)?.includes(`name: agent-os-${s}\n`)), "skills /agent-os-init, -map, -memory");
+    ok(!read(".cursor/skills/agent-os-memory/SKILL.md").includes("CLAUDE_PLUGIN_ROOT"), "skill scripts run through the CLI");
+    ok(read(".cursor/rules/agent-os-agents.mdc")?.includes("alwaysApply: true"), "agent contract is an always-on rule");
+    const hooks = JSON.parse(read(".cursor/hooks.json"));
+    ok(hooks.version === 1 && hooks.hooks.sessionStart && hooks.hooks.preToolUse && hooks.hooks.beforeShellExecution, "hooks.json: sessionStart, preToolUse, beforeShellExecution");
+
+    const hook = (script, args, input) => spawnSync(process.execPath, [join(root, ".cursor/hooks/agent-os/hooks", script), ...args],
+      { cwd: root, encoding: "utf8", input, env: { ...process.env, CURSOR_PROJECT_DIR: root } }).stdout;
+    const start = JSON.parse(hook("session-resume.mjs", ["--cursor"], ""));
+    ok(start.additional_context?.includes("`agent-os-feature-cartographer`"), "session start returns additional_context with Cursor names");
+    const pre = (file) => JSON.parse(hook("pre-edit.mjs", ["--cursor"], JSON.stringify({ tool_input: { file_path: join(root, file) } })));
+    ok(pre(".cursor/rules/api.mdc").permission === "deny", "pre-edit denies an edit to a generated rule");
+    ok(pre(".cursor/agents/agent-os-builder.md").permission === "deny", "pre-edit denies an edit to a generated subagent");
+    ok(pre("src/new.ts").permission === "allow", "pre-edit answers allow, never empty, for everything else");
+    const git = (command) => JSON.parse(hook("git-guard.mjs", [], JSON.stringify({ command }))).permission;
+    ok(git("git status") === "allow" && git("git log --oneline") === "allow", "read-only git allowed");
+    ok(["git push", "git commit -m x", "cd a && git reset --hard", "git -C x add .", "A=1 git rebase main"].every((c) => git(c) === "deny"), "git writes denied, chained and flag forms too");
+
+    writeFileSync(join(root, ".cursor/hooks.json"), JSON.stringify({ version: 1, hooks: { afterFileEdit: [{ command: "./fmt.sh" }] } }));
+    cli(["sync"], root);
+    const merged = JSON.parse(read(".cursor/hooks.json")).hooks;
+    ok(merged.afterFileEdit?.[0]?.command === "./fmt.sh" && merged.sessionStart?.length === 1, "hooks.json merged: user hook kept, ours added once");
+    cli(["sync"], root);
+    ok(JSON.parse(read(".cursor/hooks.json")).hooks.preToolUse.length === 1, "re-sync does not duplicate hooks");
+  }
+
   console.log("\n  drift");
   ok(cli(["check"], root).status === 0, "check passes when in sync");
   // Realistic drift: someone edits the body of a generated file and leaves the
@@ -230,6 +263,21 @@ try {
   ok(oc.model === "anthropic/x", "existing keys preserved");
   ok(oc.instructions.includes("KEEP.md"), "existing instructions preserved");
 } finally { rmSync(root, { recursive: true, force: true }); }
+
+console.log("\n  a Cursor-only init does not report Claude Code items");
+const cu = mkdtempSync(join(tmpdir(), "agent-os-cursor-"));
+try {
+  mkdirSync(join(cu, ".agent-os"), { recursive: true });
+  writeFileSync(join(cu, ".agent-os/config.json"), JSON.stringify({ targets: ["cursor"] }));
+  const r = cli(["init", "--no-global"], cu);
+  ok(r.status === 0, "init exits 0");
+  ok(!r.stdout.includes("SETUP") && !r.stdout.includes("still to do") && !r.stdout.includes("CLAUDE.md"), "no Claude Code SETUP or to-do list");
+  ok(/Result.*compiled for Cursor/.test(r.stdout) && r.stdout.includes("/agent-os-init"), "result names Cursor and the next step");
+  ok(!existsSync(join(cu, ".claude/settings.json")), "nothing written for Claude Code");
+  writeFileSync(join(cu, ".agent-os/config.json"), JSON.stringify({ targets: ["cursor"], cursor: { gitProtection: false } }));
+  cli(["sync"], cu);
+  ok(!JSON.parse(readFileSync(join(cu, ".cursor/hooks.json"), "utf8")).hooks.beforeShellExecution, "gitProtection: false removes the git hook");
+} finally { rmSync(cu, { recursive: true, force: true }); }
 
 console.log("\n  a Rulegate repository is left alone");
 const rg = mkdtempSync(join(tmpdir(), "agent-os-rulegate-"));

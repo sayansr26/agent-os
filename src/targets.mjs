@@ -7,6 +7,7 @@
  * existing JSON config receive the current contents and return the merged file.
  */
 import { BANNER } from "./source.mjs";
+import { cursorFiles, mergeHooks } from "./cursor.mjs";
 
 const hdr = (comment) => `${comment} ${BANNER}\n`;
 const mdHeader = `<!-- ${BANNER} -->\n\n`;
@@ -54,13 +55,19 @@ export const TARGETS = {
   // ---- translate ----------------------------------------------------------
   cursor: {
     label: "Cursor",
-    // .mdc, and a rule without frontmatter is ignored entirely.
-    files: (src) => src.rules.map((r) => ({
-      path: `.cursor/rules/${r.name}.mdc`,
-      content: `---\ndescription: ${r.description || r.name}\n` +
-        (r.always ? "alwaysApply: true\n" : `globs: ${r.paths.join(",")}\nalwaysApply: false\n`) +
-        `---\n\n${mdHeader}${r.body}\n`,
-    })),
+    // .mdc, and a rule without frontmatter is ignored entirely. Then the
+    // agent-os layer — subagents, skills, hooks — which src/cursor.mjs builds.
+    files: (src) => [
+      ...src.rules.map((r) => ({
+        path: `.cursor/rules/${r.name}.mdc`,
+        content: `---\ndescription: ${r.description || r.name}\n` +
+          (r.always ? "alwaysApply: true\n" : `globs: ${r.paths.join(",")}\nalwaysApply: false\n`) +
+          `---\n\n${mdHeader}${r.body}\n`,
+      })),
+      ...cursorFiles(src),
+    ],
+    merge: mergeHooks,
+    mergeFrom: ".cursor/hooks.json",
   },
 
   windsurf: {
@@ -179,10 +186,10 @@ export function compile(src, targetIds, readExisting) {
   for (const id of targetIds) {
     const t = TARGETS[id];
     if (!t) continue;
-    const files = t.merge
-      ? t.merge(src, readExisting(t.mergeFrom))
-      : t.files(src);
-    out.push(...files.map((f) => ({ ...f, target: id })));
+    // A target writes files, merges into one existing config, or both. Merged
+    // files are marked: they are rewritten in place with nothing of the user's lost.
+    if (t.files) out.push(...t.files(src).map((f) => ({ ...f, target: id })));
+    if (t.merge) out.push(...t.merge(src, readExisting(t.mergeFrom)).map((f) => ({ ...f, target: id, merged: true })));
   }
   return out;
 }
