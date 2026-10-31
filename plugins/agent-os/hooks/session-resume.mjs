@@ -16,6 +16,9 @@
  *   - The snapshot is hard-capped (MAX_LINES); the contract is fixed-size.
  *   - Fails silent: any error exits 0, so a broken hook never blocks a session.
  *   - Read-only. Runs git for reading only; never writes, never mutates.
+ *
+ * `--cursor` is the same hook as Cursor's sessionStart: agent names in Cursor's
+ * `agent-os-<name>` form, and the text wrapped as `{ additional_context }`.
  */
 
 import { execSync } from "node:child_process";
@@ -24,7 +27,12 @@ import { join } from "node:path";
 import { coverage } from "../lib/features.mjs";
 
 const MAX_LINES = 40;
-const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const CURSOR = process.argv.includes("--cursor");
+const cwd = process.env.CURSOR_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+// Claude Code namespaces plugin agents and skills with `:`; Cursor names allow
+// only letters and hyphens, so its generated copies use `-`.
+const agent = (name) => `agent-os${CURSOR ? "-" : ":"}${name}`;
+const skill = (name) => `/agent-os${CURSOR ? "-" : ":"}${name}`;
 const out = [];
 
 const sh = (cmd) => {
@@ -135,13 +143,13 @@ function snapshot() {
 
 // The agents and what triggers each. `subagent_type` is the namespaced name.
 const AGENTS = [
-  ["agent-os:feature-cartographer", "BEFORE changing any existing feature — ask how it is built (files, state, API, blast radius). It answers from its map, or maps the feature and files the map."],
-  ["agent-os:architect", "before a new subsystem, a cross-module change, or a data model others will depend on."],
-  ["agent-os:builder", "to write the code once the shape is settled; it enforces the project's rules while writing."],
-  ["agent-os:tester", "after building, to verify the change actually works."],
-  ["agent-os:reviewer", "before calling any change done or opening a PR."],
-  ["agent-os:documenter", "once work is verified, to update the changelog, task state and docs the change invalidated."],
-  ["agent-os:orchestrator", "for work spanning several of the above, or that cannot be stated in one sentence."],
+  ["feature-cartographer", "BEFORE changing any existing feature — ask how it is built (files, state, API, blast radius). It answers from its map, or maps the feature and files the map."],
+  ["architect", "before a new subsystem, a cross-module change, or a data model others will depend on."],
+  ["builder", "to write the code once the shape is settled; it enforces the project's rules while writing."],
+  ["tester", "after building, to verify the change actually works."],
+  ["reviewer", "before calling any change done or opening a PR."],
+  ["documenter", "once work is verified, to update the changelog, task state and docs the change invalidated."],
+  ["orchestrator", "for work spanning several of the above, or that cannot be stated in one sentence."],
 ];
 
 function contract() {
@@ -153,15 +161,17 @@ function contract() {
     return [
       "## agent-os",
       "",
-      "The agent-os plugin is installed but this project is not set up. If the user starts feature work, suggest `/agent-os:init` once.",
+      `agent-os is installed but this project is not set up. If the user starts feature work, suggest \`${skill("init")}\` once.`,
     ];
 
   const lines = [
     "## agent-os is active in this project",
     "",
-    "These agents are how work is done here — use them without being asked (Agent tool, `subagent_type` as shown):",
+    CURSOR
+      ? "These subagents are how work is done here — delegate to them without being asked, by the names shown:"
+      : "These agents are how work is done here — use them without being asked (Agent tool, `subagent_type` as shown):",
   ];
-  for (const [name, when] of AGENTS) lines.push(`- \`${name}\` — ${when}`);
+  for (const [name, when] of AGENTS) lines.push(`- \`${agent(name)}\` — ${when}`);
 
   const cov = coverage(cwd);
   lines.push("");
@@ -173,12 +183,14 @@ function contract() {
   } else if (cov.dir) {
     lines.push(`Cartographer maps are indexed in \`${cov.dir.slice(cwd.length + 1)}/MEMORY.md\`.`);
   }
-  if (!cov.architecture) lines.push("No architecture map yet — `/agent-os:map` builds it.");
+  if (!cov.architecture) lines.push(`No architecture map yet — \`${skill("map")}\` builds it.`);
 
   lines.push("");
-  lines.push("Plan mode: its \"Explore agents only\" phase does not replace the cartographer. Ask the cartographer read-only during planning (it will not write), and let it file its map once plan mode ends.");
+  lines.push(CURSOR
+    ? "Plan mode: ask the cartographer read-only during planning (it will not write), and let it file its map once plan mode ends."
+    : "Plan mode: its \"Explore agents only\" phase does not replace the cartographer. Ask the cartographer read-only during planning (it will not write), and let it file its map once plan mode ends.");
   if (existsSync(join(cwd, ".agent-os/rules")))
-    lines.push("Rules: `.claude/rules/*` and other tool copies are generated. Edit `.agent-os/rules/`, then run `npx @sayansr26/agent-os sync`.");
+    lines.push(`Rules: \`${CURSOR ? ".cursor/rules/*" : ".claude/rules/*"}\` and other tool copies are generated. Edit \`.agent-os/rules/\`, then run \`npx @sayansr26/agent-os sync\`.`);
   return lines;
 }
 
@@ -186,7 +198,8 @@ try {
   const blocks = [];
   try { const s = snapshot(); if (s.length) blocks.push(s.join("\n")); } catch {}
   try { blocks.push(contract().join("\n")); } catch {}
-  if (blocks.length) process.stdout.write(blocks.join("\n\n") + "\n");
+  if (CURSOR) process.stdout.write(JSON.stringify(blocks.length ? { additional_context: blocks.join("\n\n") } : {}));
+  else if (blocks.length) process.stdout.write(blocks.join("\n\n") + "\n");
 } catch {
   // Never let a resume hook break a session.
 }

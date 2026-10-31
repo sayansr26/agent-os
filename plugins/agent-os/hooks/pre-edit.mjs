@@ -10,11 +10,16 @@
  *      Deny, and name the source to edit instead.
  *   2. Cartographer reminder (advisory, never blocks). The first edit to an
  *      existing feature with no cartographer map adds a note telling Claude to
- *      ask agent-os:feature-cartographer first. Once per feature per session.
+ *      ask agent-os:feature-cartographer first (agent-os-feature-cartographer
+ *      in Cursor). Once per feature per session.
  *
  * Stays silent for new (untracked) features, paths outside a feature
  * directory, and anything it cannot work out. Turn the reminder off with
  * `{ "claude": { "cartographerReminder": false } }` in `.agent-os/config.json`.
+ *
+ * `--cursor` is the same hook as Cursor's preToolUse on Write. Cursor reads a
+ * missing or empty response as a block, so in that mode every exit answers
+ * explicitly: `allow` (with the reminder as `agent_message`) or `deny`.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,17 +29,32 @@ import { claudeConfig, featureOf, findMap, mapFiles, tracked } from "../lib/feat
 // Must stay a substring of BANNER in src/source.mjs.
 const BANNER = "agent-os: generated from .agent-os/";
 
-const quiet = () => process.exit(0);
+const CURSOR = process.argv.includes("--cursor");
+const agent = (name) => `agent-os${CURSOR ? "-" : ":"}${name}`;
+
+const quiet = () => {
+  if (CURSOR) process.stdout.write(JSON.stringify({ permission: "allow" }));
+  process.exit(0);
+};
 const emit = (hookSpecificOutput) => {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...hookSpecificOutput } }));
+  if (CURSOR) {
+    const deny = hookSpecificOutput.permissionDecision === "deny";
+    const text = deny ? hookSpecificOutput.permissionDecisionReason : hookSpecificOutput.additionalContext;
+    process.stdout.write(JSON.stringify(deny
+      ? { permission: "deny", user_message: text, agent_message: text }
+      : { permission: "allow", agent_message: text }));
+  } else
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", ...hookSpecificOutput } }));
   process.exit(0);
 };
 
 let payload;
 try { payload = JSON.parse(readFileSync(0, "utf8") || "{}"); } catch { quiet(); }
 
-const root = process.env.CLAUDE_PROJECT_DIR || payload?.cwd || process.cwd();
-const raw = String(payload?.tool_input?.file_path ?? "");
+const root = process.env.CURSOR_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || payload?.cwd || process.cwd();
+// Cursor does not document its Write tool's input, so take the usual names.
+const input = payload?.tool_input || {};
+const raw = String(input.file_path ?? input.path ?? input.target_file ?? input.filePath ?? "");
 if (!raw) quiet();
 const abs = isAbsolute(raw) ? raw : join(root, raw);
 const rel = relative(root, abs).replace(/\\/g, "/");
@@ -44,6 +64,14 @@ if (rel.startsWith("..")) quiet();
 try {
   if (existsSync(join(root, ".agent-os")) && existsSync(abs) && readFileSync(abs, "utf8").includes(BANNER)) {
     let source = ".agent-os/";
+    // Cursor's agent-os layer is compiled from the package, not from .agent-os/.
+    if (/^\.cursor\/(?:agents\/agent-os-|skills\/agent-os-|hooks\/agent-os\/|rules\/agent-os-agents\.mdc$)/.test(rel))
+      emit({
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          `${rel} is part of the agent-os layer for Cursor and the next sync would revert this edit. ` +
+          `To customise it, set \`{ "cursor": { "agentOs": false } }\` in .agent-os/config.json and keep your own copy.`,
+      });
     const rule = rel.match(/^\.(?:claude|clinerules|cursor|windsurf|kilocode|gemini|agents?)\/(?:rules\/)?(.+?)\.(?:md|mdc)$/);
     if (rel === "AGENTS.md") source = ".agent-os/AGENTS.md";
     else if (rule && existsSync(join(root, ".agent-os/rules", `${basename(rule[1])}.md`)))
@@ -67,7 +95,7 @@ try {
 
   const dir = join(tmpdir(), "agent-os-reminders");
   mkdirSync(dir, { recursive: true });
-  const session = String(payload?.session_id ?? "nosession").replace(/[^\w-]/g, "");
+  const session = String(payload?.session_id ?? payload?.conversation_id ?? "nosession").replace(/[^\w-]/g, "");
   const marker = join(dir, `${session}--${feature.dir.replace(/[^\w-]/g, "_")}`);
   if (existsSync(marker)) quiet();
   writeFileSync(marker, "");
@@ -75,7 +103,7 @@ try {
   emit({
     additionalContext:
       `agent-os (advisory): ${feature.dir}/ is an existing feature with no cartographer map. ` +
-      `Before changing it further, ask agent-os:feature-cartographer how "${feature.name}" is built — ` +
+      `Before changing it further, ask ${agent("feature-cartographer")} how "${feature.name}" is built — ` +
       `it answers and files the map for every later session. This applies in plan mode too ` +
       `(ask it read-only; it writes the map after plan mode ends). Shown once per feature per session.`,
   });

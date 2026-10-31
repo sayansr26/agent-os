@@ -110,11 +110,35 @@ Generated files carry a banner. Edit `.agent-os/`, run `sync`, never edit the ou
 
 Being straight about this matters more than the feature list.
 
-**Hooks don't port.** Every tool differs in events *and* control protocol — Cursor returns JSON `permission`, Windsurf uses exit codes, Claude Code uses JSON. There is no honest common denominator, so `agent-os` doesn't invent one.
+**Hooks don't port generically.** Every tool differs in events *and* control protocol — Cursor returns JSON `permission`, Windsurf uses exit codes, Claude Code uses JSON. There is no honest common denominator, so `agent-os` doesn't invent one for your hooks. Its own hooks are written once per tool: Claude Code (the plugin) and Cursor (see below).
 
-**Memory doesn't port.** Only Claude Code (auto memory) and Windsurf have native per-session memory. Kilo deprecated its Memory Bank in favour of `AGENTS.md`; Cline's is a community methodology, not a feature. So the architecture map — the thing that makes *"change the login flow from email to OTP"* run off known structure — works in Claude Code and nowhere else yet.
+**Memory doesn't port generically.** Only Claude Code (auto memory) and Windsurf have native per-session memory. Kilo deprecated its Memory Bank in favour of `AGENTS.md`; Cline's is a community methodology, not a feature. So the architecture map — the thing that makes *"change the login flow from email to OTP"* run off known structure — works in Claude Code and Cursor, whose subagents are told where their memory lives, and nowhere else yet.
 
 **Antigravity's rules target is best effort.** Its docs state a rule is "simply a Markdown file" and never show frontmatter; glob activation is configured in the Customizations panel. So `agent-os` writes valid Markdown and states the intended scope in a comment, rather than inventing a `globs:` key that may silently do nothing.
+
+---
+
+## Cursor
+
+When Cursor is a target, `init` and `sync` also compile the agent-os layer into the places Cursor reads it — the same agents, skills and hooks the Claude Code plugin ships:
+
+| Claude Code (plugin) | Cursor (generated) |
+|---|---|
+| agents `agent-os:<name>` | subagents `.cursor/agents/agent-os-<name>.md` |
+| `/agent-os:init`, `/agent-os:map`, `/agent-os:memory` | `/agent-os-init`, `/agent-os-map`, `/agent-os-memory` in `.cursor/skills/` |
+| SessionStart hook | `sessionStart` hook → `additional_context` |
+| PreToolUse guard on generated files + cartographer reminder | `preToolUse` hook on `Write` |
+| git write protection in `permissions.deny` | `beforeShellExecution` hook refusing the same git commands |
+| "Agents in this project" section of `CLAUDE.md` | `.cursor/rules/agent-os-agents.mdc`, always applied |
+| per-agent memory, `.claude/agent-memory/agent-os-<name>/` | the same directories — one map for both tools |
+
+Hook scripts live in `.cursor/hooks/agent-os/` and are registered in `.cursor/hooks.json`, merged so your own hooks stay. Everything carries the generated banner, so `check` catches drift and the pre-edit hook blocks hand edits; `sync` after upgrading the package is the Cursor equivalent of `claude plugin update`. Reload the Cursor window after `init`, then run `/agent-os-init` in Agent chat.
+
+```json
+{ "targets": ["cursor"], "cursor": { "agentOs": true, "gitProtection": true } }
+```
+
+`agentOs: false` stops generating the layer and removes its hooks from `hooks.json` (delete the `agent-os-*` files yourself); `gitProtection: false` drops only the git hook. What does not carry over: Claude Code's auto memory, task tools (Cursor has its own to-do list), and the auto-route and auto-handoff mods.
 
 ---
 
