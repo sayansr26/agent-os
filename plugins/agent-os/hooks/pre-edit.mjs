@@ -51,7 +51,8 @@ const emit = (hookSpecificOutput) => {
 let payload;
 try { payload = JSON.parse(readFileSync(0, "utf8") || "{}"); } catch { quiet(); }
 
-const root = process.env.CURSOR_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || payload?.cwd || process.cwd();
+// Claude Code may run inside Cursor's terminal, so CURSOR_PROJECT_DIR counts only in --cursor mode.
+const root = (CURSOR && process.env.CURSOR_PROJECT_DIR) || process.env.CLAUDE_PROJECT_DIR || payload?.cwd || process.cwd();
 // Cursor does not document its Write tool's input, so take the usual names.
 const input = payload?.tool_input || {};
 const raw = String(input.file_path ?? input.path ?? input.target_file ?? input.filePath ?? "");

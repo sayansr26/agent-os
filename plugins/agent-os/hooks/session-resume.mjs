@@ -28,7 +28,8 @@ import { coverage } from "../lib/features.mjs";
 
 const MAX_LINES = 40;
 const CURSOR = process.argv.includes("--cursor");
-const cwd = process.env.CURSOR_PROJECT_DIR || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+// Claude Code may run inside Cursor's terminal, so CURSOR_PROJECT_DIR counts only in --cursor mode.
+const cwd = (CURSOR && process.env.CURSOR_PROJECT_DIR) || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 // Claude Code namespaces plugin agents and skills with `:`; Cursor names allow
 // only letters and hyphens, so its generated copies use `-`.
 const agent = (name) => `agent-os${CURSOR ? "-" : ":"}${name}`;
